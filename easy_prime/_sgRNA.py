@@ -157,7 +157,7 @@ class sgRNA:
 				# relative_pos = 0
 				# get_ref = RTS[relative_pos:relative_pos+len(self.ref)]
 				# get_ref = self.ref
-				new_RTS = RTS+ self.alt 
+				new_RTS = self.alt[1:] + RTS
 			else:
 				new_RTS = RTS[:relative_pos]	+ self.alt + RTS[relative_pos+len(self.ref):]
 			if get_ref !=self.ref:
