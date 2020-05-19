@@ -1,3 +1,4 @@
 build/
 dist/
-unique_color.egg-info/
+easy_prime.egg-info/
+__pycache__/
