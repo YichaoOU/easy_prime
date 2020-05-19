@@ -1,0 +1,99 @@
+#!/usr/bin/env python
+#-*- coding: utf-8 -*-
+
+import sys
+import argparse
+import datetime
+import getpass
+
+
+"""
+
+"""
+
+def my_args():
+	mainParser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,description="easy_prime for pegRNA design")
+	username = getpass.getuser()
+
+	mainParser.add_argument('-f','--vcf_file',  help="input target mutations to look for pegRNAs",required=True)
+	mainParser.add_argument('-c','--config',  help="A YAML file specifying parameters",default=None)
+	mainParser.add_argument('-o','--output',  help="output prefix for csv file",default="easy_prime_%s_%s.output"%(username,str(datetime.date.today())))
+	
+	##------- add parameters above ---------------------
+	args = mainParser.parse_args()	
+	return args
+
+def run_steps(t,**kwargs):
+	t.init(**kwargs)
+	t.search(**kwargs)
+	t.featurize(**kwargs)
+	t.predict(**kwargs)
+	t.output(**kwargs)
+	return [t.topX,t.allX]
+
+def main():
+
+	args = my_args()
+	
+	## get parameters
+	from easy_prime.utils import get_parameters
+	parameters = get_parameters(args.config)
+	
+	## get a list of targets
+	from easy_prime import target_mutation
+	my_targets = []
+	with open(args.vcf_file) as f:
+		for line in f:
+			line = line.strip()
+			if "#" == line[0]:
+				continue
+			line = line.split()
+			chr = line[0]
+			pos = int(line[1])
+			name = line[2]
+			ref = line[3]
+			alt = line[4]
+			my_targets.append(target_mutation(chr,pos,name,ref,alt))
+	
+	## find best pegRNAs
+	from joblib import Parallel, delayed
+	df_list = Parallel(n_jobs=parameters['n_jobs'])(delayed(run_steps)(t,**parameters) for t in my_targets)
+	
+	## save output
+	import pandas as pd
+	df_top = pd.concat([x[0] for x in df_list])
+	df_top = df_top.sort_values("predicted_efficiency",ascending=False)
+	df_top.to_csv(args.output+".top_pegRNAs.csv",index=False)
+	df_all = pd.concat([x[1] for x in df_list])
+	df_all = df_all.sort_values("predicted_efficiency",ascending=False)
+	df_all.to_csv(args.output+".all_pegRNAs.csv",index=False)
+	
+	
+if __name__ == "__main__":
+	main()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

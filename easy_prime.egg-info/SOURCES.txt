@@ -1,0 +1,14 @@
+setup.py
+bin/easy_prime
+easy_prime/__init__.py
+easy_prime/_sgRNA.py
+easy_prime/_target_mutation.py
+easy_prime/easy_prime.py
+easy_prime/featurize.py
+easy_prime/utils.py
+easy_prime.egg-info/PKG-INFO
+easy_prime.egg-info/SOURCES.txt
+easy_prime.egg-info/dependency_links.txt
+easy_prime.egg-info/top_level.txt
+model/__init__.py
+test/__init__.py
