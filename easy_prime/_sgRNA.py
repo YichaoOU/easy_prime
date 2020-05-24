@@ -2,7 +2,7 @@
 from .utils import *
 	
 class sgRNA:
-	def __init__(self,chr,start,end,seq,strand,cut_position,target_pos,ref,alt,user_defined_name_variant_name,dist_dict,strand_dict,candidate_pegRNA_df):
+	def __init__(self,chr,start,end,seq,strand,cut_position,target_pos,ref,alt,user_defined_name_variant_name,dist_dict,strand_dict,candidate_pegRNA_df,max_nick_distance):
 		"""
 		
 		search key is chr_start_end_seq because seq can be duplicated, this is unique
@@ -19,6 +19,7 @@ class sgRNA:
 		# print (cut_position)
 		# exit()
 		self.target_pos = target_pos
+		self.max_nick_distance = max_nick_distance
 		self.ref = ref
 		self.alt = alt
 		self.dist_dict = dist_dict ## other gRNAs in search space
@@ -83,16 +84,19 @@ class sgRNA:
 		# exit()
 	
 	
-	def find_nick_gRNA(self,gRNA_search_space=500,**kwargs):
-		max_nick_distance = gRNA_search_space
+	# def find_nick_gRNA(self,gRNA_search_space=500,**kwargs):
+		# max_nick_distance = gRNA_search_space
+	def find_nick_gRNA(self,debug=0,**kwargs):
+		max_nick_distance = self.max_nick_distance
 		opposite_strand_gRNAs = [g for g in self.strand_dict if self.strand_dict[g] != self.strand]
 		
 		for g in opposite_strand_gRNAs:
 			# print (g,self.name)
 			if self.dist_dict[self.name][g]<=max_nick_distance:
 				self.nick_gRNA_list.append(g)	
-		if len(self.nick_gRNA_list) == 0:
-			print ("no valid nick-gRNAs found for query gRNA %s"%(self.seq))
+		if debug > 5:
+			if len(self.nick_gRNA_list) == 0:
+				print ("no valid nick-gRNAs found for query gRNA %s"%(self.seq))
 		# print (self.seq,len(self.nick_gRNA_list))
 
 	
@@ -229,7 +233,7 @@ class sgRNA:
 		out2['POS'] = self.target_pos
 		out2['REF'] = self.ref
 		out2['ALT'] = self.alt
-		out2['type'] = "pegRNA"
+		out2['type'] = "sgRNA"
 
 		out2['seq'] = self.seq
 		out2['chr'] = self.chr

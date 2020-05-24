@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore")
 import os 
 import argparse
 import shutil
@@ -5,13 +7,13 @@ import datetime
 import getpass
 import uuid
 import pandas as pd
-from joblib import Parallel, delayed
+
 import yaml
 
 import inspect
 import itertools
 import pickle
-
+import subprocess
 
 #------------------ FILE IO ---------------------------
 
@@ -27,14 +29,15 @@ def get_parameters(config):
 	pre_defined_list["genome_fasta"] = "/home/yli11/Data/Human/hg19/fasta/hg19.fa"
 	pre_defined_list["gRNA_search_space"] = 500
 	pre_defined_list["n_jobs"] = -1
-	pre_defined_list["min_PBS_length"] = 9
-	pre_defined_list["max_PBS_length"] = 15
+	pre_defined_list["min_PBS_length"] = 8
+	pre_defined_list["max_PBS_length"] = 18
 	pre_defined_list["min_RTS_length"] = 9
-	pre_defined_list["max_RTS_length"] = 50
+	pre_defined_list["max_RTS_length"] = 60
 	pre_defined_list["PBS_length_step"] = 2
 	pre_defined_list["RTS_length_step"] = 3
 	pre_defined_list["N_nick_gRNA_per_sgRNA"] = 5
-	pre_defined_list["N_top_pegRNAs"] = 3
+	pre_defined_list["N_combinations_for_optimization"] = 800
+	pre_defined_list["N_top_pegRNAs"] = 3 ## top pegRNAs per sgRNA
 	pre_defined_list["scaffold"] = "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"
 	## if you have large deletion in your file, for example
 	## 80bp deletion, you should set this parameter > 80, say 100
@@ -68,7 +71,8 @@ def get_parameters(config):
 
 def delete_files(myList):
 	for f in myList:
-		os.system("rm %s"%(f))
+		# os.system("rm %s"%(f))
+		subprocess.call("rm %s"%(f),shell=True)
 
 def to_bed3(chr,start,end):
 	outfile = str(uuid.uuid4()).split("-")[-1]
@@ -93,8 +97,9 @@ def run_casOFFinder(genome_fasta,PAM,your_seq_list,nMisMatch=0):
 	for i in your_seq_list:
 		config.append(i+PAM+" %s"%(nMisMatch))
 	write_file(cas_input,"\n".join(config))
-	command = "cas-offinder %s C %s > /dev/null 2>&1;rm %s"%(cas_input,cas_output,cas_input)	
-	os.system(command)
+	command = "cas-offinder %s C %s > /dev/null 2>&1;rm %s"%(cas_input,cas_output,cas_input)
+	subprocess.call(command, shell=True)	
+	# os.system(command)
 	return cas_output
 
 
@@ -133,7 +138,8 @@ def get_opposite_strand(x):
 def get_fasta_given_bed(genome_fa,extended_file):
 	out = extended_file+".fa"
 	command = "bedtools getfasta -fi %s -bed %s -fo %s"%(genome_fa,extended_file,out)
-	os.system(command)
+	# os.system(command)
+	subprocess.call(command,shell=True)
 	return out
 
 
@@ -143,10 +149,12 @@ def get_fasta_single(chr,start,end,genome_fasta=None):
 	out_fa = str(uuid.uuid4()).split("-")[-1]
 	write_file(out_bed,"%s\t%s\t%s"%(chr,start,end))
 	command = "bedtools getfasta -fi %s -bed %s -fo %s -tab"%(genome_fasta,out_bed,out_fa)
-	os.system(command)
+	# os.system(command)
+	subprocess.call(command,shell=True)
 	lines = open(out_fa).readlines()[0]
 	seq = lines.split()[-1]
-	os.system("rm %s;rm %s"%(out_bed,out_fa))
+	# os.system("rm %s;rm %s"%(out_bed,out_fa))
+	subprocess.call("rm %s;rm %s"%(out_bed,out_fa),shell=True)
 	return seq
 	
 
@@ -158,12 +166,14 @@ def revcomp(seq):
 def get_seq_from_bed(bed_file,genome_fasta):
 	temp_file = addon_string = str(uuid.uuid4()).split("-")[-1]
 	command = "bedtools getfasta -fi %s -bed %s -fo %s -tab -s -name"%(genome_fasta,bed_file,temp_file)
-	os.system(command)
+	# os.system(command)
+	subprocess.call(command,shell=True)
 	df = pd.read_csv(temp_file,header=None,sep="\t",index_col=0)
 	
 	# df.index = [x.split("::")[0] for x in df.index.tolist()]
 	# print (df.head())
-	os.system("rm %s"%(temp_file))
+	# os.system("rm %s"%(temp_file))
+	subprocess.call("rm %s"%(temp_file),shell=True)
 	return df
 	
 #------------------ pegRNA Operators ---------------------------
@@ -200,15 +210,15 @@ def is_gRNA_valid(cas9_cut_position,target_mutation,strand):
 	
 	"""
 	if cas9_cut_position[0] != target_mutation[0]:
-		return False
+		return -1
 	distance = int(target_mutation[1]-cas9_cut_position[1])
 	if strand=="+":
 		if distance>=0:
-			return True
+			return distance
 	if strand=="-":
 		if distance<=0:
-			return True	
-	return False
+			return -distance	
+	return -1
 	
 	
 

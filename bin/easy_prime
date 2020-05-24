@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-
+import warnings
+warnings.filterwarnings("ignore")
 import sys
 import argparse
 import datetime
 import getpass
-
+import os
 
 """
 
@@ -24,10 +25,16 @@ def my_args():
 	return args
 
 def run_steps(t,**kwargs):
+	# os.system("taskset -p 0xff %d" % os.getpid())
+
 	t.init(**kwargs)
+	print ("%s init finished"%(t.name))
 	t.search(**kwargs)
+	print ("%s search finished"%(t.name))
 	t.featurize(**kwargs)
+	print ("%s featurize finished"%(t.name))
 	t.predict(**kwargs)
+	print ("%s predict finished"%(t.name))
 	t.output(**kwargs)
 	return [t.topX,t.allX]
 
@@ -38,6 +45,12 @@ def main():
 	## get parameters
 	from easy_prime.utils import get_parameters
 	parameters = get_parameters(args.config)
+	print (parameters)
+	# import psutil
+	# p = psutil.Process()
+	# all_cpus = list(range(psutil.cpu_count()))
+	# p.cpu_affinity(all_cpus)
+
 	
 	## get a list of targets
 	from easy_prime import target_mutation
@@ -56,8 +69,15 @@ def main():
 			my_targets.append(target_mutation(chr,pos,name,ref,alt))
 	
 	## find best pegRNAs
-	from joblib import Parallel, delayed
-	df_list = Parallel(n_jobs=parameters['n_jobs'])(delayed(run_steps)(t,**parameters) for t in my_targets)
+	if parameters['n_jobs'] == 1:
+		print ("Using single core.")
+		df_list = [run_steps(t,**parameters) for t in my_targets]
+	else:
+		from joblib import Parallel, delayed
+		# df_list = Parallel(n_jobs=parameters['n_jobs'],backend="multiprocessing")(delayed(run_steps)(t,**parameters) for t in my_targets)
+		# df_list = Parallel(n_jobs=parameters['n_jobs'],backend="threading")(delayed(run_steps)(t,**parameters) for t in my_targets)
+		df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=15)(delayed(run_steps)(t,**parameters) for t in my_targets)
+
 	
 	## save output
 	import pandas as pd

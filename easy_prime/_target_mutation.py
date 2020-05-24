@@ -23,6 +23,7 @@ class target_mutation:
 		self.X_p = pd.DataFrame()
 		self.topX = pd.DataFrame()
 		self.allX = pd.DataFrame()
+		self.pegRNA_flag=True
 		
 		
 	def init(self,genome_fasta=None,gRNA_search_space=500,search_iteration=1,sgRNA_length=20,PAM="NGG",offset=-3,debug=0,PCA_model=None,**kwargs):
@@ -48,6 +49,7 @@ class target_mutation:
 		temp_file_list = []
 		self.PAM = PAM
 		self.offset = offset
+		count = 0
 		
 		# for featurize later
 		with open(PCA_model, 'rb') as file:  
@@ -61,12 +63,13 @@ class target_mutation:
 		# exit()
 		## debug folder
 		if debug>0:
-			os.system("mkdir -p %s"%(self.debug_folder))
-
+			# os.system("mkdir -p %s"%(self.debug_folder))
+			subprocess.call("mkdir -p %s"%(self.debug_folder),shell=True)
 		for i in range(search_iteration):
-			if i >=1:
-				print ("No sgRNA were found using %s gRNA_search_space"%(gRNA_search_space))
 			extend = gRNA_search_space*(i+1)
+			if i >=1:
+				print ("No sgRNA were found using %s gRNA_search_space"%(extend))
+			
 			start = pos-extend
 			end = pos+extend
 			
@@ -84,30 +87,33 @@ class target_mutation:
 				df[1] = df[1].astype(int)
 				df[2] = df[2].astype(int)
 				df['cut'] = [get_gRNA_cut_site(x[1],x[2],x[5],self.offset) for i,x in df.iterrows()]
-				df['flag'] = [is_gRNA_valid([r[0],r['cut']],[self.chr,self.pos],r[5]) for i,r in df.iterrows()]
+				df['target_distance'] = [is_gRNA_valid([r[0],r['cut']],[self.chr,self.pos],r[5]) for i,r in df.iterrows()]
 				## gRNA validation given target mutation
 				if debug > 5:
 					df.to_csv("%s/%s.init.all_sgRNAs.bed"%(self.debug_folder,self.name),sep="\t",header=False,index=False)
 				
-				df = df[df['flag']==True]
-				df = df.drop(['flag'],axis=1)
+				df = df[df['target_distance']>=0]
 				df[4] = df[0]+"_"+df[1].astype(str)+"_"+df[2].astype(str)+"_"+df[3].astype(str)
 				df.index = df[4].to_list()
+				self.sgRNA_target_distance_dict = df['target_distance'].to_dict()
+				df = df.drop(['target_distance'],axis=1)
+				
+				
 
 				if df.shape[0] == 0:
-					print ("No sgRNA was found for %s using %s gRNA_search_space"%(self.name,gRNA_search_space))
+					print ("No sgRNA was found for %s using %s gRNA_search_space"%(self.name,extend))
 					continue
 				else:
 					
-
-					self.candidate_pegRNA_df = df.copy()
+					print ("%s sgRNAs were found for variant %s"%(df.shape[0],self.name))
+					self.candidate_pegRNA_df = df
 					self.dist_dict = distance_matrix(df.values.tolist(),self.offset)
 					self.strand_dict = df[5].to_dict()
 
 					break
 			except Exception as e:
 				print (e)
-				print ("Error or No sgRNA was found for %s using %s gRNA_search_space"%(self.name,gRNA_search_space))
+				print ("Error or No sgRNA was found for %s using %s gRNA_search_space"%(self.name,extend))
 				
 		
 
@@ -116,6 +122,7 @@ class target_mutation:
 			print (self.candidate_pegRNA_df.head())
 	
 		delete_files(temp_file_list)
+		self.max_nick_distance = extend
 		
 	def search(self,debug=0,**kwargs):
 		"""Second step: search for all possible PBS, RTS, pegRNA, nick-gRNA combos
@@ -132,9 +139,15 @@ class target_mutation:
 		
 		
 		"""
-		sgRNA_list = [sgRNA(x[0],x[1],x[2],x[3],x[5],x[-1],self.pos,self.ref,self.alt,self.name,self.dist_dict,self.strand_dict,self.candidate_pegRNA_df) for x in self.candidate_pegRNA_df.values.tolist()]
-		Parallel(n_jobs=1)(delayed(run_sgRNA_search)(s,**kwargs) for s in sgRNA_list)
-		df = pd.concat([s.rawX for s in sgRNA_list])
+		sgRNA_list = [sgRNA(x[0],x[1],x[2],x[3],x[5],x[-1],self.pos,self.ref,self.alt,self.name,self.dist_dict,self.strand_dict,self.candidate_pegRNA_df,self.max_nick_distance) for x in self.candidate_pegRNA_df.values.tolist()]
+		## use for loop
+		# Parallel(n_jobs=1)(delayed(run_sgRNA_search)(s,**kwargs) for s in sgRNA_list)
+		[run_sgRNA_search(s,**kwargs) for s in sgRNA_list]
+		try:
+			df = pd.concat([s.rawX for s in sgRNA_list])
+		except:
+			self.pegRNA_flag = False
+			return False
 		self.rawX = df.copy()
 		if debug>1:
 			df.to_csv("%s/%s.rawX.csv"%(self.debug_folder,self.name))
@@ -166,12 +179,24 @@ class target_mutation:
 			
 		pass
 		
-	def featurize(self,debug=0,**kwargs):
+	def featurize(self,debug=0,N_combinations_for_optimization=800,**kwargs):
 		if self.rawX.shape[0] == 0:
-			print ("No valid pegRNAs were found for %s"%(self.name))
+			# print ("No valid pegRNAs were found for %s"%(self.name))
 			return False
-		print ("There are total %s combinations for %s"%(self.rawX['sample_ID'].nunique(),self.name))
-		feature_sample_list = Parallel(n_jobs=1)(delayed(get_X_feature)(s,d,self.seq_kmer,self.ref_alt,**kwargs) for s,d in self.rawX.groupby("sample_ID"))
+		rawX = self.rawX.copy()
+		rawX = rawX.drop_duplicates('sample_ID')
+		rawX['unique_name'] = [x.split("_candidate_")[0].replace(self.name,"") for x in rawX['sample_ID'].tolist()]
+		rawX['distance'] = rawX['unique_name'].map(self.sgRNA_target_distance_dict)
+		n_sgRNA = rawX['unique_name'].nunique()	
+		if self.rawX['sample_ID'].nunique() > N_combinations_for_optimization:
+			rawX = rawX.sort_values('distance')
+			select_list = rawX.head(n=N_combinations_for_optimization)['sample_ID'].tolist()
+			print ("Total number of combinations is above threshold. \n Selecting top %s combinations based on sgRNA to target mutation distance"%(N_combinations_for_optimization))
+			self.rawX = self.rawX[self.rawX['sample_ID'].isin(select_list)]
+		print ("There are total %s combinations (%s unique sgRNAs) for %s"%(self.rawX['sample_ID'].nunique(),n_sgRNA,self.name))	
+		## use for loop
+		# feature_sample_list = Parallel(n_jobs=1)(delayed(get_X_feature)(s,d,self.seq_kmer,self.ref_alt,**kwargs) for s,d in self.rawX.groupby("sample_ID"))
+		feature_sample_list = [get_X_feature(s,d,self.seq_kmer,self.ref_alt,**kwargs) for s,d in self.rawX.groupby("sample_ID")]
 		out = pd.concat(feature_sample_list,axis=1)
 		out = pd.DataFrame(out.T)	
 		# print (out.head())
@@ -187,6 +212,7 @@ class target_mutation:
 	def output(self,N_top_pegRNAs=3,debug=0,**kwargs):
 		if self.rawX.shape[0] == 0:
 			print ("No valid pegRNAs were found for %s"%(self.name))
+			print ("Possible reasons are RTS length or nick-gRNA distance are above threshold.")
 			return False	
 		df = self.X_p.copy()
 		df['unique_name'] = [x.split("_candidate_")[0] for x in df.index.tolist()]

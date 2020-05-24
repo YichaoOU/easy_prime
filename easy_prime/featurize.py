@@ -7,7 +7,6 @@ from skbio import DNA
 import uuid
 import itertools
 import argparse
-from joblib import Parallel, delayed
 import os
 import pickle
 import numpy as np
@@ -118,7 +117,8 @@ def call_RNAplfold(pegRNA,PBS,RTS,scaffold):
 	write_fasta("%s.fa"%(uid),{uid:total_sequence})
 	# run RNAplfold
 	command = "RNAplfold < %s.fa"%(uid)
-	os.system(command)
+	# os.system(command)
+	subprocess.call(command,shell=True)
 	
 	
 	# parse file
@@ -128,8 +128,9 @@ def call_RNAplfold(pegRNA,PBS,RTS,scaffold):
 	# pegRNA/PBS-RTS percent of bp with pairing prob above mean
 	# pegRNA/PBS-RTS max avearge
 	out = pd.DataFrame(parse_RNAplfold_output(inFile,len(pegRNA),len(scaffold)))
-	out.index = ['pegRNA_max_mean','pegRNA_percent','PBS_RTS_max_mean','PBS_RTS_percent']
-	os.system("rm %s*"%(uid))
+	out.index = ['sgRNA_max_mean','sgRNA_percent','PBS_RTS_max_mean','PBS_RTS_percent']
+	# os.system("rm %s*"%(uid))
+	subprocess.call("rm %s*"%(uid),shell=True)
 	
 	
 	
@@ -193,7 +194,7 @@ def distance_features(pegRNA,nick_gRNA,target_loc):
 		b=-b
 	if nick_gRNA[0] == "0":
 		a=np.nan	
-	index_list = ["nick_to_pegRNA","target_to_pegRNA"]
+	index_list = ["nick_to_sgRNA","target_to_sgRNA"]
 	out = pd.DataFrame([a,b])
 	out.index = index_list
 	return out
@@ -226,7 +227,7 @@ def sequence_features(pegRNA,PBS,RTS,nick_gRNA,ref,alt,target_loc,seq_kmer=None,
 
 	ref_alt_cigar += [PBS_length,RTS_length,RTS_PBS_length_ratio]
 
-	columns = ["PC1","PC2","PC3","PC4","PC5","aln_ref_alt_match","aln_ref_alt_mis","aln_ref_alt_del","aln_ref_alt_ins","pegRNA_GC","PBS_GC","RTS_GC","nick_gRNA_GC","PBS_length","RTS_length","RTS_PBS_length_ratio"]
+	columns = ["PC1","PC2","PC3","PC4","PC5","aln_ref_alt_match","aln_ref_alt_mis","aln_ref_alt_del","aln_ref_alt_ins","sgRNA_GC","PBS_GC","RTS_GC","nick_gRNA_GC","PBS_length","RTS_length","RTS_PBS_length_ratio"]
 
 	out = pd.DataFrame(out+ref_alt_cigar)
 
@@ -248,12 +249,12 @@ def get_X_feature(s,d,seq_kmer=None,ref_alt = None,scaffold=None,**kwargs):
 	
 	## genomic positions
 	loc_cols=['chr','start','end','strand']
-	pegRNA_loc = d[d['type']=="pegRNA"][loc_cols].iloc[0].tolist()
+	pegRNA_loc = d[d['type']=="sgRNA"][loc_cols].iloc[0].tolist()
 	nick_gRNA_loc = d[d['type']=="nick-gRNA"][loc_cols].iloc[0].tolist()
 	target_loc = d[['CHROM','POS']].iloc[0].tolist()
 	
 	## sequences
-	pegRNA = d[d['type']=="pegRNA"]['seq'].tolist()[0]
+	pegRNA = d[d['type']=="sgRNA"]['seq'].tolist()[0]
 	PBS = d[d['type']=="PBS"]['seq'].tolist()[0]
 	RTS = d[d['type']=="RTS"]['seq'].tolist()[0]
 	nick_gRNA = d[d['type']=="nick-gRNA"]['seq'].tolist()[0]
