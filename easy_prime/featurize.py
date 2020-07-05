@@ -1,4 +1,5 @@
-from .utils import *
+# from .utils import *
+from utils import *
 import pandas as pd
 import glob
 from skbio.alignment import StripedSmithWaterman

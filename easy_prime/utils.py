@@ -7,10 +7,7 @@ import datetime
 import getpass
 import uuid
 import pandas as pd
-
 import yaml
-
-import inspect
 import itertools
 import pickle
 import subprocess
@@ -21,44 +18,59 @@ def write_file(file_name,message):
 	out = open(file_name,"wt")
 	out.write(message)
 	out.close()
+	
+def print_parameters(myDict):
+	myGroup = {}
+	myGroup['Easy-Prime'] = ['genome_fasta','scaffold','n_jobs','debug','ML_model']
+	myGroup['PBS searching'] = ['min_PBS_length','max_PBS_length']
+	myGroup['RTT searching'] = ['min_RTT_length','max_RTT_length','min_distance_RTT5']
+	myGroup['sgRNA searching'] = ['gRNA_search_space','sgRNA_length','offset','PAM']
+	myGroup['ngRNA searching'] = ['max_ngRNA_distance']
+	for k in myGroup:
+		print_group(myDict,myGroup[k],k)
+
+
+def print_group(myDict,myList,group_title):
+	print ("-------- Parameter Group: %s --------"%(group_title))
+	for l in myList:
+		print ("%s: %s"%(l,myDict[l]))
 
 def get_parameters(config):
 	p_dir = os.path.dirname(os.path.realpath(__file__)) + "/"
+	# return dict
 	parameters = {}
+	# default parameters
 	pre_defined_list = {}
+	#------------ EASY-PRIME related-----------
 	pre_defined_list["genome_fasta"] = "/home/yli11/Data/Human/hg19/fasta/hg19.fa"
-	pre_defined_list["gRNA_search_space"] = 500
 	pre_defined_list["n_jobs"] = -1
-	pre_defined_list["min_PBS_length"] = 8
-	pre_defined_list["max_PBS_length"] = 18
-	pre_defined_list["min_RTS_length"] = 9
-	pre_defined_list["max_RTS_length"] = 60
-	pre_defined_list["PBS_length_step"] = 2
-	pre_defined_list["RTS_length_step"] = 3
-	pre_defined_list["N_nick_gRNA_per_sgRNA"] = 5
-	pre_defined_list["N_combinations_for_optimization"] = 800
-	pre_defined_list["N_top_pegRNAs"] = 3 ## top pegRNAs per sgRNA
 	pre_defined_list["scaffold"] = "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"
-	## if you have large deletion in your file, for example
-	## 80bp deletion, you should set this parameter > 80, say 100
+	pre_defined_list["debug"] = 0
+	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.pkl"
+	
+	#------------ PBS -----------
+	pre_defined_list["min_PBS_length"] = 7
+	pre_defined_list["max_PBS_length"] = 18
+	
+	#------------ RTT -----------
+	pre_defined_list["min_RTT_length"] = 7
+	pre_defined_list["max_RTT_length"] = 40
+	pre_defined_list["min_distance_RTT5"] = 5
 
-	pre_defined_list["search_iteration"] = 1
+	#------------ sgRNA -----------
+	pre_defined_list["gRNA_search_space"] = 150
 	pre_defined_list["sgRNA_length"] = 20
 	pre_defined_list["offset"] = -3
-	pre_defined_list["debug"] = 0
 	pre_defined_list["PAM"] = "NGG"
-	# pre_defined_list["model1"] = "/home/yli11/Tools/easy_prime/model/model1_final_0.4.pkl"
-	pre_defined_list["model1"] = p_dir+"../model/model1_final_0.4.pkl"
-	pre_defined_list["w1"] = 0.4
-	pre_defined_list["model2"] = p_dir+"../model/model2_final_0.6.pkl"
-	pre_defined_list["w2"] = 0.6
-	pre_defined_list["PCA_model"] = p_dir+"../model/3mer_PCA.pkl"
-
-
+	
+	#------------ ngRNA ------------
+	pre_defined_list["max_ngRNA_distance"] = 150
+	
+	pre_defined_list["search_iteration"] = 1 # not affect anything
+	
 	try:
 		with open(config, 'r') as f:
 			manifest_data = yaml.load(f,Loader=yaml.FullLoader)
-		# print (manifest_data)
 	except:
 		print ("Config data is not provided or not parsed successfully, Default parameters were used.")
 		
@@ -87,44 +99,25 @@ def write_fasta(file_name,myDict):
 	out.close()
 	
 	
-#------------------ CasOFFinder ---------------------------
 
-def run_casOFFinder(genome_fasta,PAM,your_seq_list,nMisMatch=0):
-	cas_input = str(uuid.uuid4()).split("-")[-1]
-	cas_output = str(uuid.uuid4()).split("-")[-1]
-	pattern = "N"*len(your_seq_list[0])+PAM
-	config = [genome_fasta,pattern]
-	for i in your_seq_list:
-		config.append(i+PAM+" %s"%(nMisMatch))
-	write_file(cas_input,"\n".join(config))
-	command = "cas-offinder %s C %s > /dev/null 2>&1;rm %s"%(cas_input,cas_output,cas_input)
-	subprocess.call(command, shell=True)	
-	# os.system(command)
-	return cas_output
-
-
-def cas_local_to_df(cas_output,PAM,sgRNA_length):
-	"""convert chr1:185056572-185056972	374	TCTATACAAGCTTTTGTGGTAGG	+	0 to bed"""
-	df = pd.read_csv(cas_output,sep="\t",header=None)
+#------------------ sgRNA finder ---------------------------
+from Bio import SeqUtils
+def run_pam_finder(target_fa,seq,PAM,abs_start_pos,chr):
 	
-	df = df.dropna()
-	df['chr'] = [x.split(":")[0] for x in df[1]]
-	df['start'] = df.apply(lambda x:cas_local_row_apply(x,len(PAM)),axis=1)
-	df['end'] = df['start']+sgRNA_length
-	df['seq'] = [x[:-len(PAM)] for x in df[3].tolist()]
-	df[5] = "."
-	return df[['chr','start','end','seq',5,4]]
-
-
-def cas_local_row_apply(x,PAM_length):
-	chr,temp = x[1].split(":")
-	start,_ = temp.split("-")
-	start = int(start)
-	if x[4] == "-":
-		start = start+PAM_length+x[2]
-	else:
-		start = start+x[2]
-	return start
+	# SeqUtils.nt_search("AGGCGGGGG", "NGG")
+	# SeqUtils.nt_search("CCACCA", "NGG")
+	# forward
+	rev_seq = revcomp(target_fa)
+	fwd_search = SeqUtils.nt_search(target_fa, seq+PAM)
+	rev_search = SeqUtils.nt_search(rev_seq, seq+PAM)
+	out = []
+	if len(fwd_search) > 1:
+		for s in fwd_search[1:]:
+			out.append([chr,s+abs_start_pos,s+abs_start_pos+len(seq),target_fa[s:(s+len(seq))],".","+"])
+	if len(rev_search) > 1:
+		for s in rev_search[1:]:
+			out.append([chr,(len(target_fa)-s)+abs_start_pos-len(seq),(len(target_fa)-s)+abs_start_pos,rev_seq[s:(s+len(seq))],".","-"])
+	return pd.DataFrame(out)
 
 
 #------------------ Fasta Operators ---------------------------
@@ -136,11 +129,62 @@ def get_opposite_strand(x):
 	return "+"
 
 def get_fasta_given_bed(genome_fa,extended_file):
-	out = extended_file+".fa"
+	out = extended_file+".for_cas_input.fa"
 	command = "bedtools getfasta -fi %s -bed %s -fo %s"%(genome_fa,extended_file,out)
 	# os.system(command)
 	subprocess.call(command,shell=True)
 	return out
+
+def sub_fasta_single(target_fa,target_pos, abs_start,abs_end):
+	"""given the target_fa we extracted from target_pos, we get sub fasta
+	
+	target_fa: we extended +- N bp of the target set, this length is 2N
+	
+	user sequence, abs start and end
+	
+	target_pos is 1 index, the target pos that we used to get target_fa
+	
+	Assumption and user query, target_fa on the same chr
+	
+	"""
+
+	N = int(len(target_fa)/2)
+	start =  N-(target_pos-abs_start)
+	end = abs_end - abs_start + start
+	seq = target_fa[start:end]
+	return seq
+
+
+
+def get_fasta_simple(target_fa,df, target_pos,strand=False):
+	"""save time and memory get fasta
+	
+	target_fa: we extended +- N bp of the target set, this length is 2N
+	
+	df is a normal bed file
+	
+	target_pos is 1 index
+	
+	df and target_pos, all on the same chr
+	
+	"""
+	temp = df.copy()
+	# print ("len target_fa",len(target_fa))
+	N = int(len(target_fa)/2)
+	temp.columns = list(range(len(df.columns)))
+	temp.index = temp[0]+":"+temp[1].astype(str)+"-"+temp[2].astype(str)
+	temp[2] = temp[2]-temp[1]
+	temp[1] = N-(target_pos-temp[1])
+	temp[2] = temp[2]+temp[1]
+	seq_list = []
+	for r in temp.values.tolist():
+		seq = target_fa[r[1]:r[2]]
+		if strand:
+			if r[5] == "-":
+				seq = revcomp(seq)
+		seq_list.append(seq)
+	temp[3] = seq_list
+	return temp
 
 
 def get_fasta_single(chr,start,end,genome_fasta=None):
@@ -176,18 +220,31 @@ def get_seq_from_bed(bed_file,genome_fasta):
 	subprocess.call("rm %s"%(temp_file),shell=True)
 	return df
 	
+	
 #------------------ pegRNA Operators ---------------------------
 
 	
-def distance_matrix(lines,offset):
-	# pos to dict
-	# chr_start_end_seq is the key
+def distance_matrix(lines):
+	"""given sgRNA bed dataframe (the 5th is the name), get gRNA distance matrix
+	
+	index: chr_start_end_strand_seq (5th column)
+	
+	use the last element as the pos to calculate distance
+	
+	comparing to D Liu distance, this is always 1 larger than them, because we use the 4th nucleotide as the cut position, cas9 cut between 3rd and 4th
+	
+	return
+	-------
+	
+	2d dict
+	
+	"""
+	
 	dist_dict={}
 	for x in lines:
 		dist_dict[x[4]]={}
 		for y in lines:
-			dist_dict[x[4]][y[4]] = abs(x[-1]-y[-1])
-
+			dist_dict[x[4]][y[4]] = x[-1]-y[-1]
 	return dist_dict
 
 
@@ -231,4 +288,40 @@ def get_gRNA_cut_site(start,end,strand,offset=-3):
 		return int(end + offset)
 	if strand == "-":
 		return int(start - offset +1)
+		
+		
+def is_dPAM(PAM_seq, target_pos,ref,alt,pegRNA_loc):
+	"""wheter target mutation affects PAM sequence
+	
+	pegRNA_loc is [chr.start,end,strand]
+	
+	"""
+	# currently only work for NG or NGG, and SNV
+	# report a bug in Biopython
+	# https://github.com/biopython/biopython/issues/3023
+	# currently, assuming ref do not contain IUPAC letter
+	# get PAM location
+	flag = 0
+	# print ("pegRNA_loc---",list(pegRNA_loc))
+	if len(ref)==len(alt)==1:
+		PAM_rel_pos = list(range(len(PAM_seq)))
+		PAM_abs_pos = []
+		
+		if pegRNA_loc[3] == "-":
+			for i in range(len(PAM_seq)):
+				PAM_abs_pos.append(pegRNA_loc[1]-i)
+		else:
+			for i in range(len(PAM_seq)):
+				PAM_abs_pos.append(pegRNA_loc[2]+1+i)
+		if target_pos in PAM_abs_pos:
+			for i in PAM_rel_pos:
+				PAM_pos = PAM_abs_pos[i]
+				if target_pos == PAM_pos:
+					PAM_nuc = PAM_seq[i]
+					if PAM_nuc != "N":
+						flag = 1
+						if ref != PAM_nuc:
+							print ("PAM something is wrong")
+			
 
+	return flag

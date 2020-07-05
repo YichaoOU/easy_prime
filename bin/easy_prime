@@ -10,6 +10,15 @@ import os
 
 """
 
+Output
+--------
+
+The output folder will contain:
+1. all pegRNA + ngRNA combination for the input vcf file
+2. top1 pegRNA + ngRNA combination for each variant
+3. visualization of the top1s
+4. a summary file of each variant
+
 """
 
 def my_args():
@@ -18,77 +27,51 @@ def my_args():
 
 	mainParser.add_argument('-f','--vcf_file',  help="input target mutations to look for pegRNAs",required=True)
 	mainParser.add_argument('-c','--config',  help="A YAML file specifying parameters",default=None)
-	mainParser.add_argument('-o','--output',  help="output prefix for csv file",default="easy_prime_%s_%s.output"%(username,str(datetime.date.today())))
+	mainParser.add_argument('-o','--output',  help="output dir",default="easy_prime_%s_%s_result_dir"%(username,str(datetime.date.today())))
 	
 	##------- add parameters above ---------------------
 	args = mainParser.parse_args()	
 	return args
 
 def run_steps(t,**kwargs):
-	# os.system("taskset -p 0xff %d" % os.getpid())
 
 	t.init(**kwargs)
-	print ("%s init finished"%(t.name))
 	t.search(**kwargs)
-	print ("%s search finished"%(t.name))
-	t.featurize(**kwargs)
-	print ("%s featurize finished"%(t.name))
 	t.predict(**kwargs)
-	print ("%s predict finished"%(t.name))
-	t.output(**kwargs)
-	return [t.topX,t.allX]
+
+	return [t.rawX,t.X_p]
 
 def main():
 
 	args = my_args()
 	
 	## get parameters
-	from easy_prime.utils import get_parameters
+	from easy_prime.utils import get_parameters, print_parameters
 	parameters = get_parameters(args.config)
-	print (parameters)
-	# import psutil
-	# p = psutil.Process()
-	# all_cpus = list(range(psutil.cpu_count()))
-	# p.cpu_affinity(all_cpus)
+	print_parameters(parameters)
 
-	
 	## get a list of targets
 	from easy_prime import target_mutation
-	my_targets = []
-	with open(args.vcf_file) as f:
-		for line in f:
-			line = line.strip()
-			if "#" == line[0]:
-				continue
-			line = line.split()
-			chr = line[0]
-			pos = int(line[1])
-			name = line[2]
-			ref = line[3]
-			alt = line[4]
-			my_targets.append(target_mutation(chr,pos,name,ref,alt))
-	
-	## find best pegRNAs
-	if parameters['n_jobs'] == 1:
-		print ("Using single core.")
-		df_list = [run_steps(t,**parameters) for t in my_targets]
-	else:
-		from joblib import Parallel, delayed
-		# df_list = Parallel(n_jobs=parameters['n_jobs'],backend="multiprocessing")(delayed(run_steps)(t,**parameters) for t in my_targets)
-		# df_list = Parallel(n_jobs=parameters['n_jobs'],backend="threading")(delayed(run_steps)(t,**parameters) for t in my_targets)
-		df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=15)(delayed(run_steps)(t,**parameters) for t in my_targets)
-
-	
-	## save output
 	import pandas as pd
+	vcf = pd.read_csv(args.vcf_file,comment="#",sep="\t",header=False)
+	vcf[1] = vcf[1].astype(int)
+	vcf =vcf.drop_duplicates(2) # remove duplicated names
+	vcf[3] = [x.upper() for x in vcf[3]]
+	vcf[4] = [x.upper() for x in vcf[4]]
+	my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]
+
+	## find best pegRNAs
+	from joblib import Parallel, delayed
+	df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=10)(delayed(run_steps)(t,**parameters) for t in my_targets)
+
+	## save output
 	df_top = pd.concat([x[0] for x in df_list])
 	df_top = df_top.sort_values("predicted_efficiency",ascending=False)
-	df_top.to_csv(args.output+".top_pegRNAs.csv",index=False)
+	df_top.to_csv("%s/top1_pegRNAs.csv"%(args.output),index=False)
 	df_all = pd.concat([x[1] for x in df_list])
 	df_all = df_all.sort_values("predicted_efficiency",ascending=False)
-	df_all.to_csv(args.output+".all_pegRNAs.csv",index=False)
-	
-	
+	df_all.to_csv("%s/all_pegRNAs.csv"%(args.output),index=False)
+
 if __name__ == "__main__":
 	main()
 

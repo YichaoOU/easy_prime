@@ -1,11 +1,21 @@
 
-from .utils import *
+# from .utils import *
+from utils import *
 	
 class sgRNA:
-	def __init__(self,chr,start,end,seq,strand,cut_position,target_pos,ref,alt,user_defined_name_variant_name,dist_dict,strand_dict,candidate_pegRNA_df,max_nick_distance):
+	def __init__(self,chr=None,start=None,end=None,seq=None,strand=None,cut_position=None,mutation_pos = None,mutation_ref = None,mutation_alt = None,variant_id=None,dist_dict=None,opposite_strand_sgRNAs=None,all_sgRNA_df=None,**kwargs):
 		"""
 		
 		search key is chr_start_end_seq because seq can be duplicated, this is unique
+		
+		
+		Searching steps
+		--------------------
+		
+		1. RTT
+		2. PBS
+		3. ngRNA
+		
 		
 		"""
 		self.chr = chr
@@ -18,7 +28,7 @@ class sgRNA:
 		self.cut_position = cut_position
 		# print (cut_position)
 		# exit()
-		self.target_pos = target_pos
+		self.target_pos = target_pos ## this is the corrected, actual position of variant
 		self.max_nick_distance = max_nick_distance
 		self.ref = ref
 		self.alt = alt
@@ -26,168 +36,162 @@ class sgRNA:
 		self.strand_dict = strand_dict ## other gRNAs in search space
 		self.candidate_pegRNA_df = candidate_pegRNA_df	 ## other gRNAs in search space
 		self.nick_gRNA_list = []
+		
+		#for rawX
 		self.PBS_df = pd.DataFrame()
-		self.RTS_df = pd.DataFrame()
+		self.RTT_df = pd.DataFrame()
+		self.ngRNA_df = pd.DataFrame()
+		# for X
+		self.PBS_features = pd.DataFrame() 
+		self.RTT_features = pd.DataFrame()
+		self.ngRNA_features = pd.DataFrame()
+		
+		
 		self.rawX = pd.DataFrame()
-	def find_PBS(self,min_PBS_length=5,max_PBS_length=18,PBS_length_step=3,**kwargs):
-		if len(self.nick_gRNA_list) == 0:
-			return False
+		# sgRNA name = chr,start,end,seq,strand
+		
+		## flags
+		self.no_RTT = False ## alwasy assume we can find valid RTT
+		
+		
+		
+		
+		
+	def find_PBS(self,min_PBS_length=7,max_PBS_length=17,**kwargs):
+		"""find PBS sequences as bed format df
+		
+		Output
+		--------
+		
+		PBS coordinates, as a dataframe
+
+		chr,start,end, strand 
+		
+		"""
+		if self.no_RTT:
+			return 0
 	
 		out = []
 		chr = self.chr
 		
 		if self.strand=="+":
 			end = self.cut_position
-			for l in range(min_PBS_length,max_PBS_length+1,PBS_length_step):
+			for l in range(min_PBS_length,max_PBS_length+1):
 				start = end-l
 				out.append([chr,start,end])
 		if self.strand=="-":
 			start = self.cut_position - 1
-			for l in range(min_PBS_length,max_PBS_length+1,PBS_length_step):
+			for l in range(min_PBS_length,max_PBS_length+1):
 				end = start+l
 				out.append([chr,start,end])		
-		out = pd.DataFrame(out)	
-		out[4] = "PBS"
-		self.PBS_df = out.copy()
-		# print (self.PBS_df.head())
-		# exit()
-		# print (self.name,self.PBS_df.shape)
-	
-	def find_RTS(self,min_RTS_length=10,max_RTS_length=50,RTS_length_step=3,**kwargs):
-		if len(self.nick_gRNA_list) == 0:
-			# print (self.seq,len(self.nick_gRNA_list))
-			return False
+		self.PBS_df = pd.DataFrame(out)	
+		self.PBS_df[3] = get_opposite_strand(self.strand)
+		
+		
+		## make features
+		
+		
+
+	def find_RTT(self,min_RTT_length=7,max_RTT_length=40,min_distance_RTT5=5,**kwargs):
+		"""find RTT sequences as bed format df
+		
+		Output
+		--------
+		
+		RTT coordinates, as a dataframe
+
+		chr,start,end, strand 
+		
+		
+		
+		"""
 		out = []
 		chr = self.chr
 		if self.strand=="+":
-			if len(self.ref)!=len(self.alt):
-				target_pos = self.target_pos+1
-			else:
-				target_pos = self.target_pos
-			start = self.cut_position
-			for l in range(min_RTS_length,max_RTS_length+1,RTS_length_step):
+			start = self.cut_position # remember out cut position, the actual nucleotide, we use -4
+			for l in range(min_RTT_length,max_RTT_length+1):
 				end = start+l
-				if start+1<=target_pos <=end:
+				if start+1<=self.target_pos <=end-min_distance_RTT5:
 					out.append([chr,start,end])
 		if self.strand=="-":
 			end = self.cut_position - 1
-			for l in range(min_RTS_length,max_RTS_length+1,RTS_length_step):
+			for l in range(min_RTT_length,max_RTT_length+1):
 				start = end-l
-				if end>=self.target_pos >=start+1:
-					out.append([chr,start,end])		
-		out = pd.DataFrame(out)	
-		out[4] = "RTS"
-		self.RTS_df = out.copy()
-		# if out.shape[0] == 0:
-			# print (self.chr,self.start,self.end,self.seq,self.strand)
-		# print (self.RTS_df.head())
-		# exit()
-	
-	
-	# def find_nick_gRNA(self,gRNA_search_space=500,**kwargs):
-		# max_nick_distance = gRNA_search_space
-	def find_nick_gRNA(self,debug=0,**kwargs):
-		max_nick_distance = self.max_nick_distance
-		opposite_strand_gRNAs = [g for g in self.strand_dict if self.strand_dict[g] != self.strand]
+				if end>=self.target_pos >=start+1+min_distance_RTT5:
+					out.append([chr,start,end])	
+		if len(out) == 0:
+			## valid RTT not found
+			self.no_RTT = True
+			return 0
+		self.RTT_df = pd.DataFrame(out)
+		self.RTT_df.columns = ['chr','start','end']
+		self.RTT_df["strand"] = get_opposite_strand(self.strand)
 		
-		for g in opposite_strand_gRNAs:
-			# print (g,self.name)
-			if self.dist_dict[self.name][g]<=max_nick_distance:
-				self.nick_gRNA_list.append(g)	
+		temp = get_fasta_simple(self.target_fa,self.RTT_df, self.target_pos)
+		self.RTT_df['old_seq'] = temp[3].tolist()
+		## add variant
+		self.RTT_df['seq'] = [add_variant(r['old_seq'],self.mutation_pos-r['start'],self.mutation_ref,self.mutation_alt) for i,r in self.RTT_df.iterrows()]
+		
+		## make features
+		feature_list = []
+		
+
+
+	def find_nick_gRNA(self,max_nick_distance=150,debug=0,**kwargs):
+		"""find all valid ngRNAs given the sgRNA name
+		
+		Input
+		------
+		
+		all possible ngRNA list is a list of ngRNA names that are on the opposite strand of the given gRNA
+		
+		Then we just need to check the distance threshold
+		
+		
+		"""
+
+		for g in self.ngRNA_list:
+			if abs(self.dist_dict[self.name][g])<=max_nick_distance:
+				self.nick_gRNA_list.append(g)
 		if debug > 5:
 			if len(self.nick_gRNA_list) == 0:
 				print ("no valid nick-gRNAs found for query gRNA %s"%(self.seq))
 		# print (self.seq,len(self.nick_gRNA_list))
+		
+		
+		## make features
 
 	
 	
-	def add_variant(self,genome_fasta=None,N_nick_gRNA_per_sgRNA=5,**kwargs):
-		if len(self.nick_gRNA_list) == 0 or self.RTS_df.shape[0]==0:
-			# print (self.seq,len(self.nick_gRNA_list))
-			return False
-	
-		## get PBS, RTS sequences
-		df = pd.concat([self.PBS_df,self.RTS_df])
-		# print (df.shape)
-		df[1] = df[1].astype(int)
-		df[2] = df[2].astype(int)
-		# df = df.dropna()
-		# print (df.shape)
-		df[3] = self.name
-		df[5] = get_opposite_strand(self.strand)
-		nick_gRNA = self.candidate_pegRNA_df.loc[self.nick_gRNA_list][[0,1,2,3,4,5,'cut']]
-		nick_gRNA[4]="nick-gRNA"
-		nick_gRNA[6] = nick_gRNA['cut']-self.target_pos-50
-		nick_gRNA[6] = nick_gRNA[6].abs()
-		nick_gRNA = nick_gRNA.sort_values(6)
-		nick_gRNA = nick_gRNA.head(n=N_nick_gRNA_per_sgRNA)
-		nick_gRNA = nick_gRNA.drop(['cut',6],axis=1)
-		# N_nick_gRNA_per_sgRNA, pick top N nick gRNA w.r.t 50bp
+	def add_variant(self,RTT_seq,relative_pos,ref,alt,**kwargs):
+		"""
 		
-		# print (nick_gRNA)
-		df = pd.concat([df,nick_gRNA])
-		# if self.seq == "GTCATCTTAGTCATTACCTG":
-			# print (df)
-		# exit()
-		outfile = str(uuid.uuid4()).split("-")[-1]
-		df.to_csv(outfile,sep="\t",header=False,index=False)
-		# print (df.head())
-		df['dummy_index'] = df[3]+"::"+df[0]+":"+df[1].astype(str)+"-"+df[2].astype(str)+"("+df[5]+")"
-		seqs = get_seq_from_bed(outfile,genome_fasta)
-		seqs[1] = seqs[1].str.upper()
-		# print (df)
-		# print (seqs.head())
+		Steps
+		-------
 		
-		# exit()
-		df[3] = seqs.loc[df['dummy_index'].tolist()][1].tolist()
-		df = df.drop(['dummy_index'],axis=1)
-		# df.to_csv("%s.bed"%(self.name),sep="\t",header=False,index=False)
-		# print (df)
-		## add variant
-		out = []
-		# remove_index_list = []
-		for line in df.values.tolist():
-			RTS = line[3]
-			if line[4] != "RTS":
-				out.append(line)
-				continue
-			if line[5] == "-": 
-				RTS = revcomp(RTS)
-			relative_pos = self.target_pos - int(line[1] ) -1	 ## 0-index
-			get_ref = RTS[relative_pos:relative_pos+len(self.ref)]
-			if relative_pos == -1:
-				## its OK for indels to have -1, because the ref is on PBS sequence, not RTS sequence
-				get_ref = self.ref
-				# relative_pos = 0
-				# get_ref = RTS[relative_pos:relative_pos+len(self.ref)]
-				# get_ref = self.ref
-				new_RTS = self.alt[1:] + RTS
-			else:
-				new_RTS = RTS[:relative_pos]	+ self.alt + RTS[relative_pos+len(self.ref):]
-			if get_ref !=self.ref:
-				# remove_index_list.append(line[0])
-				print ("Something is wrong %s"%(line))
-				print ("relative position:",relative_pos)
-				print ("RTS:",RTS)
-				print ("ref:",self.ref)
-				print ("get_ref:",get_ref)	
-				print (self.chr,self.start,self.end,self.seq,self.strand)
-				if len(self.ref) >1:
-					print ("Could be this particular RTS is not long enough to cover the entire reference allel %s"%(self.ref))	
-				continue
-			
-			if line[5] == "-":
-				line[3] = revcomp(new_RTS)
-			else:
-				line[3] = new_RTS
-			out.append(line)
-		df = pd.DataFrame(out)
-		# self.pre_rawX = df.copy()
-		self.get_rawX(df)		
-		delete_files([outfile])
+		Assume all input is on the positive strand
 		
-		pass
+		ref alt is the corrected version
 		
+		e.g., GC - > C becomes C to "" (empty)
+		
+		relative_pos 0-index
+		
+		"""
+		
+
+		
+		## function check
+		if len(ref)>0:
+			get_ref = RTT_seq[relative_pos:relative_pos+len(ref)]
+			if get_ref != ref:
+				print (self.name,"references do not match",RTT_seq,relative_pos,ref,alt)
+		if relative_pos < 0:
+			print (self.name,"relative position < 0, result will not be correct!")
+			relative_pos = 0
+		new_RTT = RTT_seq[:relative_pos]	+ self.alt + RTT_seq[relative_pos+len(self.ref):]
+		return new_RTT
+
 	def get_rawX(self,pegRNA,**kwargs):
 	
 		# pegRNA = self.pre_rawX

@@ -1,0 +1,4 @@
+genome_fasta: /home/yli11/Data/Human/hg19/fasta/hg19.fa
+gRNA_search_space: 30
+max_RTS_length: 20
+debug: 10
