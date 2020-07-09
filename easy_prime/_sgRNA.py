@@ -1,251 +1,421 @@
 
 from .utils import *
+# from utils import *
 	
 class sgRNA:
-	def __init__(self,chr,start,end,seq,strand,cut_position,target_pos,ref,alt,user_defined_name_variant_name,dist_dict,strand_dict,candidate_pegRNA_df,max_nick_distance):
+	def __init__(self,chr=None,start=None,end=None,seq=None,sgRNA_name=None,strand=None,cut_position=None,mutation_pos = None,mutation_ref = None,mutation_alt = None,variant_id=None,dist_dict=None,opposite_strand_sgRNAs=None,all_sgRNA_df=None,target_fa=None,scaffold_seq=None,user_target_pos=None,user_ref=None,user_alt=None,is_dPAM=None,target_to_sgRNA=None,**kwargs):
+	
 		"""
 		
 		search key is chr_start_end_seq because seq can be duplicated, this is unique
+		
+		
+		Searching steps
+		--------------------
+		
+		1. RTT
+		2. PBS
+		3. ngRNA
+		
+							   chr     start       end  target_to_RTT5 strand  ...        11        12        13    RTT_GC  RTT_length
+		01d0f4a564dc_RTT_0   chr20  55990403  55990410               5      -  ...  0.224020  0.256546  0.297711  0.857143           7
+		01d0f4a564dc_RTT_33  chr20  55990403  55990443              38      -  ...  0.435531  0.151318  0.172131  0.675000          40
+
+		[34 rows x 24 columns]
+							   chr     start       end strand                 seq    PBS_GC  PBS_length
+		01d0f4a564dc_PBS_0   chr20  55990396  55990403      -             ACTTATC  0.285714           7
+		01d0f4a564dc_PBS_11  chr20  55990385  55990403      -  ACTTATCGGCCCCTGCGG  0.666667          18
+								chr     start       end                   seq                                      sgRNA_name strand  sgRNA_distance_to_ngRNA
+		01d0f4a564dc_ngRNA_0  chr20  55990397  55990417  AAGCAGAGCCAGACACTTAT  chr20_55990397_55990417_-_AAGCAGAGCCAGACACTTAT      -                       -2
+		01d0f4a564dc_ngRNA_1  chr20  55990388  55990408  CAGACACTTATCGGCCCCTG  chr20_55990388_55990408_-_CAGACACTTATCGGCCCCTG      -                      -11
+		01d0f4a564dc_ngRNA_2  chr20  55990387  55990407  AGACACTTATCGGCCCCTGC  chr20_55990387_55990407_-_AGACACTTATCGGCCCCTGC      -                      -12
+		01d0f4a564dc_ngRNA_3  chr20  55990384  55990404  CACTTATCGGCCCCTGCGGG  chr20_55990384_55990404_-_CACTTATCGGCCCCTGCGGG      -                      -15
+		01d0f4a564dc_ngRNA_4  chr20  55990378  55990398  TCGGCCCCTGCGGGAGGCCC  chr20_55990378_55990398_-_TCGGCCCCTGCGGGAGGCCC      -                      -21
+				
 		
 		"""
 		self.chr = chr
 		self.start = start
 		self.end = end
 		self.seq = seq
-		self.user_defined_name_variant_name = user_defined_name_variant_name
-		self.name = "_".join([chr,str(start),str(end),seq])
+		self.variant_id = variant_id
+		self.target_to_sgRNA = target_to_sgRNA
+		self.is_dPAM = is_dPAM
+		self.sgRNA_name = sgRNA_name
+		# print ("init",sgRNA_name)
+		self.uid = str(uuid.uuid4()).split("-")[-1]
+		# self.name = "_".join([chr,str(start),str(end),seq])
 		self.strand = strand
 		self.cut_position = cut_position
 		# print (cut_position)
 		# exit()
-		self.target_pos = target_pos
-		self.max_nick_distance = max_nick_distance
-		self.ref = ref
-		self.alt = alt
+		self.target_pos = mutation_pos ## this is the corrected, actual position of variant
+		self.target_fa = target_fa 
+		self.scaffold_seq = scaffold_seq 
+		# self.max_nick_distance = max_nick_distance
+		self.ref = mutation_ref
+		self.alt = mutation_alt
 		self.dist_dict = dist_dict ## other gRNAs in search space
-		self.strand_dict = strand_dict ## other gRNAs in search space
-		self.candidate_pegRNA_df = candidate_pegRNA_df	 ## other gRNAs in search space
+		self.opposite_strand_sgRNAs = opposite_strand_sgRNAs 
+		# self.candidate_pegRNA_df = candidate_pegRNA_df	 ## other gRNAs in search space
 		self.nick_gRNA_list = []
+		self.user_target_pos = user_target_pos
+		self.user_ref = user_ref
+		self.user_alt = user_alt
+
+		#for rawX
 		self.PBS_df = pd.DataFrame()
-		self.RTS_df = pd.DataFrame()
+		self.RTT_df = pd.DataFrame()
+		self.ngRNA_df = pd.DataFrame()
+		# for X
+		# self.PBS_feature_list = []
+		# self.RTT_feature_list = []
+		# self.ngRNA_feature_list = []
+		self.PBS_feature_list = ["PBS_GC",'PBS_length']
+		self.RTT_feature_list = ["target_to_RTT5","RTT_GC","RTT_length","0","1","2","3","4","5","6","7","8","9","10","11","12","13"]
+		self.ngRNA_feature_list = ['sgRNA_distance_to_ngRNA','is_PE3b']
+		
 		self.rawX = pd.DataFrame()
-	def find_PBS(self,min_PBS_length=5,max_PBS_length=18,PBS_length_step=3,**kwargs):
-		if len(self.nick_gRNA_list) == 0:
-			return False
+		self.X = pd.DataFrame()
+		self.X_p = pd.DataFrame()
+		# sgRNA name = chr,start,end,seq,strand
+		
+		## flags
+		self.no_RTT = False ## alwasy assume we can find valid RTT
+		self.no_ngRNA = False ## alwasy assume we can find valid ngRNA
+		
+		
+	def find_PBS(self,min_PBS_length=7,max_PBS_length=17,**kwargs):
+		"""find PBS sequences as bed format df
+		
+		Output
+		--------
+		
+		PBS_df
+		
+		PBS_feature_list
+		
+		"""
+		if self.no_RTT:
+			return 0
 	
 		out = []
 		chr = self.chr
-		
+
 		if self.strand=="+":
 			end = self.cut_position
-			for l in range(min_PBS_length,max_PBS_length+1,PBS_length_step):
+			for l in range(min_PBS_length,max_PBS_length+1):
 				start = end-l
 				out.append([chr,start,end])
 		if self.strand=="-":
 			start = self.cut_position - 1
-			for l in range(min_PBS_length,max_PBS_length+1,PBS_length_step):
+			for l in range(min_PBS_length,max_PBS_length+1):
 				end = start+l
 				out.append([chr,start,end])		
-		out = pd.DataFrame(out)	
-		out[4] = "PBS"
-		self.PBS_df = out.copy()
-		# print (self.PBS_df.head())
-		# exit()
-		# print (self.name,self.PBS_df.shape)
-	
-	def find_RTS(self,min_RTS_length=10,max_RTS_length=50,RTS_length_step=3,**kwargs):
-		if len(self.nick_gRNA_list) == 0:
-			# print (self.seq,len(self.nick_gRNA_list))
-			return False
+		self.PBS_df = pd.DataFrame(out)	
+		self.PBS_df.columns = ['chr','start','end']
+		self.PBS_df["strand"] = get_opposite_strand(self.strand)
+		self.PBS_df.index = ["%s_PBS_%s"%(self.uid,i) for i in range(self.PBS_df.shape[0])]
+		temp = get_fasta_simple(self.target_fa,self.PBS_df, self.target_pos)
+		self.PBS_df['seq'] = temp[3].tolist()
+		
+		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
+			self.PBS_df['seq'] = [revcomp(x) for x in self.PBS_df['seq']]
+
+		self.PBS_df['PBS_GC'] = [GC_content(x) for x in self.PBS_df['seq'] ]
+		self.PBS_df['PBS_length'] = [len(x) for x in self.PBS_df['seq'] ]
+		
+
+	def find_RTT(self,min_RTT_length=7,max_RTT_length=40,min_distance_RTT5=5,**kwargs):
+		"""find RTT sequences as bed format df
+		
+		Output
+		--------
+		
+		RTT_df
+		
+		RTT_feature_list
+		
+		"""
 		out = []
 		chr = self.chr
+		pbs_start = None
+		pbs_end = None
+		user_max_RTT_length = max_RTT_length
+		large_deletion_flag=False
+		if len(self.ref)+min_distance_RTT5 > max_RTT_length: ## in case of large deletion
+			large_deletion_flag = True
+			max_RTT_length = max_RTT_length+len(self.ref)
+		# target_to_RTT5_feature=[]
 		if self.strand=="+":
-			if len(self.ref)!=len(self.alt):
-				target_pos = self.target_pos+1
-			else:
-				target_pos = self.target_pos
-			start = self.cut_position
-			for l in range(min_RTS_length,max_RTS_length+1,RTS_length_step):
+			start = self.cut_position # remember out cut position, the actual nucleotide, we use -4
+			pbs_end = start
+			pbs_start = pbs_end - 14 
+			for l in range(min_RTT_length,max_RTT_length+1):
 				end = start+l
-				if start+1<=target_pos <=end:
-					out.append([chr,start,end])
+				if start+1<=self.target_pos <=end-min_distance_RTT5:
+					out.append([chr,start,end,end-self.target_pos])
 		if self.strand=="-":
 			end = self.cut_position - 1
-			for l in range(min_RTS_length,max_RTS_length+1,RTS_length_step):
+			pbs_start = end
+			pbs_end = pbs_start + 14 
+			for l in range(min_RTT_length,max_RTT_length+1):
 				start = end-l
-				if end>=self.target_pos >=start+1:
-					out.append([chr,start,end])		
-		out = pd.DataFrame(out)	
-		out[4] = "RTS"
-		self.RTS_df = out.copy()
-		# if out.shape[0] == 0:
-			# print (self.chr,self.start,self.end,self.seq,self.strand)
-		# print (self.RTS_df.head())
-		# exit()
-	
-	
-	# def find_nick_gRNA(self,gRNA_search_space=500,**kwargs):
-		# max_nick_distance = gRNA_search_space
-	def find_nick_gRNA(self,debug=0,**kwargs):
-		max_nick_distance = self.max_nick_distance
-		opposite_strand_gRNAs = [g for g in self.strand_dict if self.strand_dict[g] != self.strand]
+				if end>=self.target_pos >=start+1+min_distance_RTT5:
+					out.append([chr,start,end,self.target_pos-start-1])	
+		if len(out) == 0:
+			## valid RTT not found
+			self.no_RTT = True
+			return 0
+		self.RTT_df = pd.DataFrame(out)
+		self.RTT_df.columns = ['chr','start','end','target_to_RTT5']
+		self.RTT_df["strand"] = get_opposite_strand(self.strand)
+		self.RTT_df.index = ["%s_RTT_%s"%(self.uid,i) for i in range(self.RTT_df.shape[0])]
+		temp = get_fasta_simple(self.target_fa,self.RTT_df, self.user_target_pos)
+		self.RTT_df['old_seq'] = temp[3].tolist()
 		
-		for g in opposite_strand_gRNAs:
-			# print (g,self.name)
-			if self.dist_dict[self.name][g]<=max_nick_distance:
-				self.nick_gRNA_list.append(g)	
-		if debug > 5:
-			if len(self.nick_gRNA_list) == 0:
-				print ("no valid nick-gRNAs found for query gRNA %s"%(self.seq))
-		# print (self.seq,len(self.nick_gRNA_list))
+		## add variant
+		# relative_pos = self.target_pos-r['start']-1 # start is 0-index
+		self.RTT_df['seq'] = [self.add_variant(r['old_seq'],self.target_pos-r['start']-1,self.ref,self.alt) for i,r in self.RTT_df.iterrows()]
+		self.RTT_df = self.RTT_df[self.RTT_df['seq']!=0]
+		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
+			self.RTT_df['seq'] = [revcomp(x) for x in self.RTT_df['seq']]
+		# print (self.RTT_df)
+		self.RTT_df['RTT_length'] = [len(x) for x in self.RTT_df['seq'] ]
+		if large_deletion_flag:
+			self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']<=user_max_RTT_length]
+		self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']>=min_RTT_length]
+		if self.RTT_df.shape[0] == 0:
+			## valid RTT not found
+			self.no_RTT = True
+			return 0
+		## make features
+		attached_minimal_PBS = sub_fasta_single(self.target_fa,self.user_target_pos, pbs_start,pbs_end)
+		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
+			attached_minimal_PBS = revcomp(attached_minimal_PBS)
+		# print ("attached_minimal_PBS",attached_minimal_PBS)
+		# print (self.RTT_df)
+
+		
+		self.RTT_df['RNAfold_seq']= [(self.scaffold_seq+x+attached_minimal_PBS).replace("T","U") for x in self.RTT_df['seq']]
+		RNAfold_features_df = pd.DataFrame([call_RNAplfold(x,len(self.scaffold_seq))for x in self.RTT_df['RNAfold_seq']])
+		# print (RNAfold_features_df)
+		RNAfold_features_df.index = self.RTT_df.index.tolist()
+		self.RTT_df = pd.concat([self.RTT_df,RNAfold_features_df],axis=1)
+		self.RTT_df['RTT_GC'] = [GC_content(x) for x in self.RTT_df['seq'] ]
+		
+		self.RTT_df.columns = [str(x) for x in self.RTT_df.columns]
+		
+		# print (self.RTT_df)
+
+	def make_PE3b_ngRNA(self,myIndex,start,end,seq,strand):
+		"""check if target mutation overlaps with ngRNA and update its sequence
+		
+		only work for len(ref) = len(alt), namely substitutions
+		
+		return 
+		
+		sequence
+		
+		"""
+
+		# check if overlaps
+		
+		target_pos_list = list(range(self.target_pos,self.target_pos+len(self.ref)))
+		seq_pos_list = list(range(start+1,end+1))
+		overlaps = set(seq_pos_list).intersection(target_pos_list)
+		
+		if len(overlaps) == 0:
+			return [myIndex,seq,0]
+		# print (seq,"contain overlaps",overlaps)
+		if strand == "-":
+			new_seq = list(revcomp(seq))
+		else:
+			new_seq = list(seq)
+		for i in overlaps:
+			relative_ngRNA_pos = i - start - 1
+			relative_target_pos = i - self.target_pos
+			if relative_ngRNA_pos < 0 or relative_target_pos<0:
+				print ("Error: make_PE3b_ngRNA",relative_target_pos,relative_ngRNA_pos,self.sgRNA_name,start,end,new_seq,strand,self.variant_id)
+				return [myIndex,seq,0]
+				relative_ngRNA_pos = 0
+			ngRNA_ref = new_seq[relative_ngRNA_pos]
+			target_ref = self.ref[relative_target_pos]
+			target_alt = self.alt[relative_target_pos]
+			if target_ref != ngRNA_ref:
+				print ("Error: target_ref != ngRNA_ref","%s != %s"%(target_ref,ngRNA_ref),relative_target_pos,relative_ngRNA_pos,start,end,new_seq,strand,self.variant_id)
+				return [myIndex,seq,0]
+			new_seq[relative_ngRNA_pos] = target_alt
+		if strand == "-":
+			new_seq = revcomp("".join(new_seq))
+			return [myIndex,new_seq,1]
+		else:
+			new_seq = "".join(new_seq)
+			return [myIndex,new_seq,1]
+		
+	def find_nick_gRNA(self,max_ngRNA_distance=150,debug=0,**kwargs):
+		"""find all valid ngRNAs given the sgRNA name
+		
+		Input
+		------
+		
+		ngRNA_df
+		
+		ngRNA_feature_list
+		
+		"""
+
+		self.ngRNA_df = self.opposite_strand_sgRNAs.copy()
+		# print (self.ngRNA_df)
+		if self.ngRNA_df.shape[0] == 0:
+			self.no_ngRNA = True
+			return 0
+		self.ngRNA_df.index = ["%s_ngRNA_%s"%(self.uid,i) for i in range(self.ngRNA_df.shape[0])]
+		self.ngRNA_df.columns = ['chr','start','end','seq','sgRNA_name','strand']
+		if self.strand == "-":
+			self.ngRNA_df['sgRNA_distance_to_ngRNA'] = [-self.dist_dict[x][self.sgRNA_name] for x in self.ngRNA_df["sgRNA_name"]]
+		if self.strand == "+":
+			self.ngRNA_df['sgRNA_distance_to_ngRNA'] = [self.dist_dict[x][self.sgRNA_name] for x in self.ngRNA_df['sgRNA_name']]
+		self.ngRNA_df = self.ngRNA_df[self.ngRNA_df['sgRNA_distance_to_ngRNA'].abs()<=max_ngRNA_distance]
+		if self.ngRNA_df.shape[0] == 0:
+			self.no_ngRNA = True
+			return 0
+		# print (self.ngRNA_df)
+		self.ngRNA_df['is_PE3b'] = 0
+		
+		if len(self.ref) == len(self.alt): # check PE3b
+			pe3b = pd.DataFrame([self.make_PE3b_ngRNA(		i,
+																														r['start'],
+																														r['end'],
+																														r['seq'],
+																														r['strand']
+																													) for i,r in self.ngRNA_df.iterrows()])
+			# print ("-"*20,self.variant_id,"-"*20)
+			# print (pe3b)
+			pe3b = pe3b.set_index(0)
+			self.ngRNA_df[['seq','is_PE3b']] = pe3b[[1,2]]
+		
+		# print (self.ngRNA_df)
 
 	
-	
-	def add_variant(self,genome_fasta=None,N_nick_gRNA_per_sgRNA=5,**kwargs):
-		if len(self.nick_gRNA_list) == 0 or self.RTS_df.shape[0]==0:
-			# print (self.seq,len(self.nick_gRNA_list))
-			return False
-	
-		## get PBS, RTS sequences
-		df = pd.concat([self.PBS_df,self.RTS_df])
-		# print (df.shape)
-		df[1] = df[1].astype(int)
-		df[2] = df[2].astype(int)
-		# df = df.dropna()
-		# print (df.shape)
-		df[3] = self.name
-		df[5] = get_opposite_strand(self.strand)
-		nick_gRNA = self.candidate_pegRNA_df.loc[self.nick_gRNA_list][[0,1,2,3,4,5,'cut']]
-		nick_gRNA[4]="nick-gRNA"
-		nick_gRNA[6] = nick_gRNA['cut']-self.target_pos-50
-		nick_gRNA[6] = nick_gRNA[6].abs()
-		nick_gRNA = nick_gRNA.sort_values(6)
-		nick_gRNA = nick_gRNA.head(n=N_nick_gRNA_per_sgRNA)
-		nick_gRNA = nick_gRNA.drop(['cut',6],axis=1)
-		# N_nick_gRNA_per_sgRNA, pick top N nick gRNA w.r.t 50bp
+	def add_variant(self,RTT_seq,relative_pos,ref,alt,**kwargs):
+		"""
 		
-		# print (nick_gRNA)
-		df = pd.concat([df,nick_gRNA])
-		# if self.seq == "GTCATCTTAGTCATTACCTG":
-			# print (df)
-		# exit()
-		outfile = str(uuid.uuid4()).split("-")[-1]
-		df.to_csv(outfile,sep="\t",header=False,index=False)
-		# print (df.head())
-		df['dummy_index'] = df[3]+"::"+df[0]+":"+df[1].astype(str)+"-"+df[2].astype(str)+"("+df[5]+")"
-		seqs = get_seq_from_bed(outfile,genome_fasta)
-		seqs[1] = seqs[1].str.upper()
-		# print (df)
-		# print (seqs.head())
+		Steps
+		-------
 		
-		# exit()
-		df[3] = seqs.loc[df['dummy_index'].tolist()][1].tolist()
-		df = df.drop(['dummy_index'],axis=1)
-		# df.to_csv("%s.bed"%(self.name),sep="\t",header=False,index=False)
-		# print (df)
-		## add variant
-		out = []
-		# remove_index_list = []
-		for line in df.values.tolist():
-			RTS = line[3]
-			if line[4] != "RTS":
-				out.append(line)
-				continue
-			if line[5] == "-": 
-				RTS = revcomp(RTS)
-			relative_pos = self.target_pos - int(line[1] ) -1	 ## 0-index
-			get_ref = RTS[relative_pos:relative_pos+len(self.ref)]
-			if relative_pos == -1:
-				## its OK for indels to have -1, because the ref is on PBS sequence, not RTS sequence
-				get_ref = self.ref
-				# relative_pos = 0
-				# get_ref = RTS[relative_pos:relative_pos+len(self.ref)]
-				# get_ref = self.ref
-				new_RTS = self.alt[1:] + RTS
-			else:
-				new_RTS = RTS[:relative_pos]	+ self.alt + RTS[relative_pos+len(self.ref):]
-			if get_ref !=self.ref:
-				# remove_index_list.append(line[0])
-				print ("Something is wrong %s"%(line))
-				print ("relative position:",relative_pos)
-				print ("RTS:",RTS)
-				print ("ref:",self.ref)
-				print ("get_ref:",get_ref)	
-				print (self.chr,self.start,self.end,self.seq,self.strand)
-				if len(self.ref) >1:
-					print ("Could be this particular RTS is not long enough to cover the entire reference allel %s"%(self.ref))	
-				continue
-			
-			if line[5] == "-":
-				line[3] = revcomp(new_RTS)
-			else:
-				line[3] = new_RTS
-			out.append(line)
-		df = pd.DataFrame(out)
-		# self.pre_rawX = df.copy()
-		self.get_rawX(df)		
-		delete_files([outfile])
+		Assume all input is on the positive strand
 		
-		pass
+		ref alt is the corrected version
 		
-	def get_rawX(self,pegRNA,**kwargs):
-	
-		# pegRNA = self.pre_rawX
-		PBS = pegRNA[pegRNA[4]=="PBS"]
-		RTS = pegRNA[pegRNA[4]=="RTS"]
-		if RTS.shape[0] == 0:			
-			return False
-		nick_gRNA = pegRNA[pegRNA[4]=="nick-gRNA"]
-		output_index = []
-		selected_rows = []
-		count = 0
+		e.g., GC - > C becomes C to "" (empty)
 		
-		all_list = [PBS.index.tolist(),RTS.index.tolist(),nick_gRNA.index.tolist()]
-		# print (all_list)
+		relative_pos 0-index
+		
+		"""
+		
+
+		
+		## function check
+		
+		
+		if len(ref)>0:
+			get_ref = RTT_seq[relative_pos:relative_pos+len(ref)]
+			# print (self.sgRNA_name,"relative_pos",relative_pos,"get_ref",get_ref)
+			if get_ref != ref:
+				if len(get_ref)<len(ref):
+					## large deletion, given RTT is not long enough
+					return 0
+				print (self.variant_id,self.sgRNA_name,"references do not match",RTT_seq,relative_pos,ref,alt)
+				return 0
+		if relative_pos < 0:
+			print (self.variant_id,self.sgRNA_name,"relative position < 0, result will not be correct!")
+			return 0
+			relative_pos = 0
+		new_RTT = RTT_seq[:relative_pos]	+ self.alt + RTT_seq[relative_pos+len(self.ref):]
+		return new_RTT
+
+	def get_rawX_and_X(self,debug=0,**kwargs):
+		"""get rawX and X formated dataframe
+		
+		given PBS, RTT, ngRNA sequences and features
+		
+		we can use the itertools to take all combinations of the index
+		
+		then we concat them as rows, -> rawX
+		
+		we concat them as columns -> X
+		
+		return
+		------
+		
+		self.rawX
+		
+		self.X
+
+		
+		"""
+		
+		rawX_columns = ["seq","chr","start","end","strand"]
+		
+		if self.no_RTT:
+			return 0
+		## allow PE2 cases
+		if self.no_ngRNA:
+			self.ngRNA_df=pd.DataFrame([np.nan]*(len(self.ngRNA_feature_list)+len(rawX_columns))).T
+			self.ngRNA_df.columns = rawX_columns + self.ngRNA_feature_list
+
+		X_index = []
+		PBS_selected_rows =[]
+		RTT_selected_rows =[]
+		ngRNA_selected_rows =[]
+		all_list = [self.PBS_df.index.tolist(),self.RTT_df.index.tolist(),self.ngRNA_df.index.tolist()]
 		temp = list(itertools.product(*all_list)) 
-		# print (temp)
+		count = 0
 		for s in temp:
 			count += 1
-			current_index = "%s_%s_candidate_%s"%(self.user_defined_name_variant_name,self.name,count)
-			for j in s:
-				selected_rows.append(j)
-				output_index.append(current_index)
+			current_index = "%s_%s_candidate_%s"%(self.variant_id,self.sgRNA_name,count)
+			if count == 1  and debug>10:
+				print (current_index)
+			PBS_selected_rows.append(s[0])
+			RTT_selected_rows.append(s[1])
+			ngRNA_selected_rows.append(s[2])
+			X_index.append(current_index)
 			
-		out = 	pegRNA.loc[selected_rows]
-		out['sample_ID'] = output_index
-		out['CHROM'] = self.chr
-		out['POS'] = self.target_pos
-		out['REF'] = self.ref
-		out['ALT'] = self.alt
-		out['type'] = out[4]
-		out['seq'] = out[3]
-		out['chr'] = self.chr
-		out['start'] = out[1]
-		out['end'] = out[2]
-		out['strand'] = out[5]
-		out = out[["sample_ID","CHROM","POS","REF","ALT","type","seq","chr","start","end","strand"]]
+			
+		# ------------------------------------------------------------  rawX  ------------------------------------------------------------
+		rawX_PBS = self.PBS_df.loc[PBS_selected_rows][rawX_columns]
+		rawX_RTT = self.RTT_df.loc[RTT_selected_rows][rawX_columns]
+		rawX_ngRNA = self.ngRNA_df.loc[ngRNA_selected_rows][rawX_columns]
+		rawX_sgRNA = pd.DataFrame([self.seq,self.chr,self.start,self.end,self.strand]).T
+		rawX_sgRNA.columns = rawX_columns
+		rawX_sgRNA = rawX_sgRNA.loc[[0]*len(ngRNA_selected_rows)][rawX_columns]
+		rawX_PBS['sample_ID']  = X_index
+		rawX_RTT['sample_ID']  = X_index
+		rawX_ngRNA['sample_ID']  = X_index
+		rawX_sgRNA['sample_ID']  = X_index
+		rawX = pd.concat([rawX_PBS,rawX_RTT,rawX_ngRNA,rawX_sgRNA])
+		rawX['CHROM'] = self.chr
+		rawX['POS'] = self.user_target_pos
+		rawX['REF'] = self.user_ref
+		rawX['ALT'] = self.user_alt
+		rawX['type'] = ['PBS']*rawX_PBS.shape[0]+['RTT']*rawX_RTT.shape[0]+['ngRNA']*rawX_ngRNA.shape[0]+['sgRNA']*rawX_ngRNA.shape[0]
+		self.rawX = rawX[["sample_ID","CHROM","POS","REF","ALT","type","seq","chr","start","end","strand"]]
+		self.rawX = self.rawX.sort_values("sample_ID")
+		self.rawX.index = self.rawX['sample_ID'].tolist()
+		
 
-		# gRNA.columns = [str(x) for x in gRNA.columns]
 
-		out2 = pd.DataFrame()
-		out2['sample_ID'] = list(set(output_index))
-		out2['CHROM'] = self.chr
-		out2['POS'] = self.target_pos
-		out2['REF'] = self.ref
-		out2['ALT'] = self.alt
-		out2['type'] = "sgRNA"
+		# ------------------------------------------------------------  X  ------------------------------------------------------------
+		
+		X_PBS = self.PBS_df.loc[PBS_selected_rows][self.PBS_feature_list]
+		X_PBS = X_PBS.reset_index(drop=True)
+		X_RTT = self.RTT_df.loc[RTT_selected_rows][self.RTT_feature_list]
+		X_RTT = X_RTT.reset_index(drop=True)
+		X_ngRNA = self.ngRNA_df.loc[ngRNA_selected_rows][self.ngRNA_feature_list]
+		X_ngRNA = X_ngRNA.reset_index(drop=True)
+		self.X = pd.concat([X_PBS,X_RTT,X_ngRNA],axis=1)
+		self.X.index = X_index
+		self.X['is_dPAM'] = self.is_dPAM
+		self.X['target_to_sgRNA'] = self.target_to_sgRNA
 
-		out2['seq'] = self.seq
-		out2['chr'] = self.chr
-		out2['start'] = self.start
-		out2['end'] = self.end
-		out2['strand'] = self.strand
-
-		out = pd.concat([out,out2])
-		out = out.sort_values("sample_ID")
-		# print (out.head())
-		# out.to_csv("%s.bed"%(self.name),sep="\t",header=False,index=False)
-		self.rawX = out.copy()	
-	
-	
-	

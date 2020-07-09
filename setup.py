@@ -1,11 +1,13 @@
 from setuptools import setup, find_packages
-
-with open("README.md", "r") as fh:
-	long_description = fh.read()
-
+import easy_prime
+try:
+	with open("README.md", "r") as fh:
+		long_description = fh.read()
+except:
+	long_description = ""
 setup(
 	name='easy_prime',
-	version='1.0',
+	version=easy_prime.__version__,
 	description="Prime editor gRNA design tool",
 	author="Yichao Li",
 	author_email='Yichao.Li@stjude.org',
@@ -18,6 +20,15 @@ setup(
 	long_description=long_description,
 	long_description_content_type='text/markdown'	,
 	keywords='prime editor',
-
+	classifiers=[
+		'Development Status :: 5 - Production/Stable',
+		'Intended Audience :: Science/Research',
+		'Topic :: Scientific/Engineering :: Bio-Informatics',
+		'Topic :: Scientific/Engineering :: Visualization',
+		'Topic :: Scientific/Engineering :: Information Analysis',
+		'Operating System :: Unix',
+		'Natural Language :: English',
+		"Programming Language :: Python :: 3"
+	]
 )
 
