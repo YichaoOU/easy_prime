@@ -7,7 +7,7 @@ except:
 	long_description = ""
 setup(
 	name='easy_prime',
-	version=easy_prime.__version__,
+	version=str(easy_prime.__version__),
 	description="Prime editor gRNA design tool",
 	author="Yichao Li",
 	author_email='Yichao.Li@stjude.org',
