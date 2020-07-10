@@ -1,5 +1,5 @@
 {% set name = "easy_prime" %}
-{% set version = "1.1" %}
+{% set version = "1.1.2" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: f1eec3092904c4ced2b0729101220622eafc7879e27a3c0d81ceadcf4aa3e31f
+  sha256: d97c2f928ff8ef1bc0504706df6d515d2e40d58738310bfa0a7fceb7ea1a5bbb
 
 build:
   number: 0
@@ -26,11 +26,17 @@ requirements:
     - scikit-learn
     - viennarna
     - joblib
+    - pyyaml
+    - scikit-bio
+    - biopython
+    - dna_features_viewer
+
 
     
 test:
   imports:
     - easy_prime
+    - model
 
 
 about:

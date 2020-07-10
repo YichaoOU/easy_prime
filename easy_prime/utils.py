@@ -52,7 +52,7 @@ def get_parameters(config):
 	pre_defined_list["scaffold"] = "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"
 	pre_defined_list["debug"] = 0
 	pre_defined_list["extend_length"] = 1000
-	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.pkl"
+	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.py"
 	
 	#------------ PBS -----------
 	pre_defined_list["min_PBS_length"] = 8
@@ -64,7 +64,7 @@ def get_parameters(config):
 	pre_defined_list["min_distance_RTT5"] = 3
 
 	#------------ sgRNA -----------
-	pre_defined_list["gRNA_search_space"] = 150
+	pre_defined_list["gRNA_search_space"] = 200
 	pre_defined_list["sgRNA_length"] = 20
 	pre_defined_list["offset"] = -3
 	pre_defined_list["PAM"] = "NGG"

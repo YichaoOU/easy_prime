@@ -18,11 +18,9 @@ The most easiest way to install Easy-Prime is via conda.
 
 ```
 
-conda create -n genome_editing -c conda-forge -c bioconda -c anaconda -c liyc1989 easy_prime
+conda create -n genome_editing -c liyc1989 easy_prime
 
 source activate genome_editing
-
-python -m pip install dna_features_viewer
 
 easy_prime -h
 
@@ -39,6 +37,8 @@ cd easy_prime/test
 easy_prime -h
 
 easy_prime --version
+
+## Please update the genome_fasta in config.yaml 
 
 easy_prime -c config.yaml -f test.vcf
 

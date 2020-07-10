@@ -15,7 +15,7 @@ setup(
 	packages=find_packages(),
 	license='LICENSE',
 	scripts=['bin/easy_prime','bin/easy_prime_vis'],
-	package_data={'': ["*","test/*","model/*"]},
+	package_data={'': ["README.md","model/xgb_model_final.py"]},
 	include_package_data=True,
 	long_description=long_description,
 	long_description_content_type='text/markdown'	,
