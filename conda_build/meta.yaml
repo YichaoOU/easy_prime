@@ -1,0 +1,47 @@
+{% set name = "easy_prime" %}
+{% set version = "1.1" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  sha256: f1eec3092904c4ced2b0729101220622eafc7879e27a3c0d81ceadcf4aa3e31f
+
+build:
+  number: 0
+  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv "
+
+requirements:
+  host:
+    - pip
+    - python
+  run:
+    - python
+    - bedtools
+    - matplotlib
+    - pandas
+    - xgboost
+    - scikit-learn
+    - viennarna
+    - joblib
+
+    
+test:
+  imports:
+    - easy_prime
+
+
+about:
+  home: https://github.com/YichaoOU/easy_prime
+  license: LICENSE
+  license_family: OTHER
+  license_file: 
+  summary: Prime editor gRNA design tool
+  doc_url: 
+  dev_url: 
+
+extra:
+  recipe-maintainers:
+    - YichaoOU

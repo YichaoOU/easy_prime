@@ -14,7 +14,7 @@ setup(
 	url='https://github.com/YichaoOU/easy_prime',
 	packages=find_packages(),
 	license='LICENSE',
-	scripts=['bin/easy_prime'],
+	scripts=['bin/easy_prime','bin/easy_prime_vis'],
 	package_data={'': ["*","test/*","model/*"]},
 	include_package_data=True,
 	long_description=long_description,
