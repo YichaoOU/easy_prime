@@ -15,7 +15,7 @@ setup(
 	packages=find_packages(),
 	license='LICENSE',
 	scripts=['bin/easy_prime','bin/easy_prime_vis'],
-	package_data={'': ["README.md","model/xgb_model_final.py"]},
+	package_data={'': ["README.md","model/xgb_model_final.py"]}, ## has to be .py, otherwise conda-build won't include it
 	include_package_data=True,
 	long_description=long_description,
 	long_description_content_type='text/markdown'	,

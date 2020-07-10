@@ -27,17 +27,10 @@ PBS_GC,PBS_length:  defined in sgRNA class find_PBS
 def find_mutation_pos(pos,ref,alt):
 	"""solve the problem when user specification of ref, alt contain redundancy
 	ATTTT-> ATTT, should be T -> ""
-	
-	GC-> GGC should be G -> GC
-	
-	G - > GC will just be G GC
-	
-	ref can't be empty, otherwise we can't check if add variant is correct or not
+	G - > GC will  be "" C
 	"""
 	count=0
 	for i in range(min(len(ref),len(alt))):
-		# if len(ref)-i <= 1:
-			# return pos,ref[i:],alt[i:]
 		x=ref[i]
 		y=alt[i]
 		if x != y:

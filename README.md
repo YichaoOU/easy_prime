@@ -18,11 +18,13 @@ The most easiest way to install Easy-Prime is via conda.
 
 ```
 
-conda create -n genome_editing -c liyc1989 easy_prime
+conda create -n genome_editing -c cheng_lab easy_prime
 
 source activate genome_editing
 
 easy_prime -h
+
+easy_prime_vis -h
 
 ```
 
@@ -46,7 +48,9 @@ easy_prime -c config.yaml -f test.vcf
 
 ```
 
-Easy-Prime also provides a dash application.
+Easy-Prime also provides a dash application.  [NOT WORKING]
+
+Please have dash installed before running the dash application.
 
 ```
 
@@ -125,9 +129,9 @@ easy_prime_vis -f topX_pegRNAs.csv -s /path/to/genome_fasta.fa
 
 This will output pdf files to a result dir. 
 
-[version-shield]: https://img.shields.io/conda/v/liyc1989/easy_prime.svg
-[version-url]: https://anaconda.org/liyc1989/easy_prime
+[version-shield]: https://img.shields.io/conda/v/cheng_lab/easy_prime.svg
+[version-url]: https://anaconda.org/cheng_lab/easy_prime
 [python-shield]: https://img.shields.io/pypi/pyversions/easy_prime.svg
 [python-url]: https://pypi.python.org/pypi/easy_prime
-[platform-shield]: https://anaconda.org/liyc1989/easy_prime/badges/platforms.svg
+[platform-shield]: https://anaconda.org/cheng_lab/easy_prime/badges/platforms.svg
 

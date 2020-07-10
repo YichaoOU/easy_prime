@@ -1,5 +1,5 @@
 {% set name = "easy_prime" %}
-{% set version = "1.1.2" %}
+{% set version = "1.1.3" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
-  sha256: d97c2f928ff8ef1bc0504706df6d515d2e40d58738310bfa0a7fceb7ea1a5bbb
+  sha256: 5a76ef10289cbffdb8bfffa43b396e46108be820fe5e4e03308efae269b37f92
 
 build:
   number: 0
@@ -30,9 +30,12 @@ requirements:
     - scikit-bio
     - biopython
     - dna_features_viewer
+    - dash
+    - dash-bio
+    - dash-core-components
+    - jupyter_dashboards
+    - plotly
 
-
-    
 test:
   imports:
     - easy_prime
