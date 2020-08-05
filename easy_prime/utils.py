@@ -28,8 +28,8 @@ def print_parameters(myDict):
 	myGroup = {}
 	myGroup['Easy-Prime'] = ['genome_fasta','scaffold','n_jobs','debug','ML_model','extend_length']
 	myGroup['PBS searching'] = ['min_PBS_length','max_PBS_length']
-	myGroup['RTT searching'] = ['min_RTT_length','max_RTT_length','min_distance_RTT5']
-	myGroup['sgRNA searching'] = ['gRNA_search_space','sgRNA_length','offset','PAM']
+	myGroup['RTT searching'] = ['min_RTT_length','max_RTT_length','min_distance_RTT5','max_max_RTT_length']
+	myGroup['sgRNA searching'] = ['gRNA_search_space','sgRNA_length','offset','PAM','max_target_to_sgRNA','max_max_target_to_sgRNA']
 	myGroup['ngRNA searching'] = ['max_ngRNA_distance']
 	for k in myGroup:
 		print_group(myDict,myGroup[k],k)
@@ -55,23 +55,25 @@ def get_parameters(config):
 	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.py"
 	
 	#------------ PBS -----------
-	pre_defined_list["min_PBS_length"] = 8
-	pre_defined_list["max_PBS_length"] = 17
+	pre_defined_list["min_PBS_length"] = 11
+	pre_defined_list["max_PBS_length"] = 15
 	
 	#------------ RTT -----------
 	pre_defined_list["min_RTT_length"] = 10
-	pre_defined_list["max_RTT_length"] = 25
-	pre_defined_list["min_distance_RTT5"] = 3
+	pre_defined_list["max_RTT_length"] = 20 # if no candidate is found, this value will be increased by 5, max to max_max_RTT_length
+	pre_defined_list["max_max_RTT_length"] = 50 
+	pre_defined_list["min_distance_RTT5"] = 5
 
 	#------------ sgRNA -----------
 	pre_defined_list["gRNA_search_space"] = 200
-	pre_defined_list["sgRNA_length"] = 20
+	pre_defined_list["sgRNA_length"] = 20 
 	pre_defined_list["offset"] = -3
 	pre_defined_list["PAM"] = "NGG"
-	pre_defined_list["max_target_to_sgRNA"] = 10
+	pre_defined_list["max_target_to_sgRNA"] = 10 # if no candidate is found, this value will be increased by 5, max to max_max_target_to_sgRNA
+	pre_defined_list["max_max_target_to_sgRNA"] = 25
 	
 	#------------ ngRNA ------------
-	pre_defined_list["max_ngRNA_distance"] = 100
+	pre_defined_list["max_ngRNA_distance"] = 100 # if no candidate is found, this value will be increased
 	pre_defined_list["search_iteration"] = 1 # not affect anything
 	
 	try:
@@ -325,7 +327,7 @@ def call_RNAplfold(seq,scaffold_length):
 	df2[0] = df[1]
 	df2[1] = df[0]
 	df = pd.concat([df,df2])
-	seq_length = 14
+	seq_length = 10
 	RTT_start = scaffold_length + 1
 	RTT_end = scaffold_length + seq_length
 	scaffold_start = 1
@@ -390,40 +392,51 @@ def global_alignments(ref,q):
 
 
 def is_dPAM(PAM_seq, target_pos,ref,alt,pegRNA_loc):
-	"""wheter target mutation affects PAM sequence
-	
-	pegRNA_loc is [chr.start,end,strand]
-	
-	"""
-	# currently only work for NG or NGG, and SNV
+	# currently accept N as ambiguos letter, R will cause error
 	# report a bug in Biopython
 	# https://github.com/biopython/biopython/issues/3023
 	# currently, assuming ref do not contain IUPAC letter
 	# get PAM location
+	PAM_abs_pos=[]
+	PAM_nucleotide=[]
 	flag = 0
-	# print ("pegRNA_loc---",list(pegRNA_loc))
-	if len(ref)==len(alt)==1:
-		PAM_rel_pos = list(range(len(PAM_seq)))
-		PAM_abs_pos = []
-		
-		if pegRNA_loc[3] == "-":
-			for i in range(len(PAM_seq)):
+	if pegRNA_loc[3] == "-":
+		for i in range(len(PAM_seq)):
+			if PAM_seq[i]!= "N":
+				PAM_nucleotide.append(PAM_seq[i])
 				PAM_abs_pos.append(pegRNA_loc[1]-i)
-		else:
-			for i in range(len(PAM_seq)):
+	else:
+		for i in range(len(PAM_seq)):
+			if PAM_seq[i]!= "N":
+				PAM_nucleotide.append(PAM_seq[i])
 				PAM_abs_pos.append(pegRNA_loc[2]+1+i)
-		if target_pos in PAM_abs_pos:
-			for i in PAM_rel_pos:
-				PAM_pos = PAM_abs_pos[i]
-				if target_pos == PAM_pos:
-					PAM_nuc = PAM_seq[i]
-					if PAM_nuc != "N":
+	if len(PAM_abs_pos) == 0:
+		# out = pd.DataFrame([flag])
+		# out.index = ['is_dPAM']
+		return flag
+	
+	## same length
+	diff = len(ref)-len(alt)
+	if diff==0:
+		for i in range(len(ref)):
+			current_pos = target_pos + i
+			if current_pos in PAM_abs_pos:
+				flag = 1
+				break
+	else: # indel
+		for i in range(len(alt)):
+			current_pos = target_pos + i
+			for x in range(len(PAM_abs_pos)):
+				PAM_pos = PAM_abs_pos[x]
+				PAM_nuc = PAM_nucleotide[x]
+				if PAM_pos == current_pos:
+					if alt[i] != PAM_nuc:
 						flag = 1
-						if ref != PAM_nuc:
-							print ("PAM something is wrong")
-			
-
+	# out = pd.DataFrame([flag])
+	# out.index = ['is_dPAM']
+	# print ("flag",flag)
 	return flag
+	
 	
 def target_to_RTT5_feature(pegRNA,nick_gRNA,target_loc,RTS_length,alt_length):
 	# 1. target mutation distance to cut 1 (pegRNA)
@@ -438,13 +451,14 @@ def target_to_RTT5_feature(pegRNA,nick_gRNA,target_loc,RTS_length,alt_length):
 		cut2 = get_gRNA_cut_site(nick_gRNA[1],nick_gRNA[2],nick_gRNA[3])
 	
 	# cut2 to cut1
-	a=cut2-cut1
+	a=cut2-cut1-1
 
 
 	# target to cut1
 	b=target_loc[1]-cut1
 	
 	if pegRNA[3]=="-":
+		a+=2 # match to coordinate system
 		a=-a
 		b=-b
 	c=cut2-target_loc[1]	

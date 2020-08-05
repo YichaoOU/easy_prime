@@ -78,8 +78,9 @@ class target_mutation:
 		self.N_sgRNA_found = 0
 		
 
-		self.feature_for_prediction = ["sgRNA_distance_to_ngRNA","target_to_sgRNA","target_to_RTT5","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',"is_dPAM"] # match the order of training features
-		
+		# self.feature_for_prediction = ["sgRNA_distance_to_ngRNA","target_to_sgRNA","target_to_RTT5","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',"is_dPAM"] # match the order of training features
+		self.feature_for_prediction = ["sgRNA_distance_to_ngRNA","target_to_sgRNA","target_to_RTT5","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',"is_dPAM"] # match the order of training features
+		self.feature_rename = ["ngRNA_pos","Target_pos","Target_end_flank","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'Folding_DS_1', 'Folding_DS_2', 'Folding_DS_3', 'Folding_DS_4', 'Folding_DS_5', 'Folding_DS_6', 'Folding_DS_7', 'Folding_DS_8', 'Folding_DS_9','Folding_DS_10',"is_dPAM"]
 		
 		
 		self.mutation_pos,self.mutation_ref,self.mutation_alt = find_mutation_pos(pos,ref,alt)
@@ -105,7 +106,7 @@ class target_mutation:
 		self.dist_dict = {} ## sgRNA_ngRNA_distance_dict
 
 		
-	def init(self,gRNA_search_space=200,search_iteration=1,sgRNA_length=20,PAM="NGG",offset=-3,debug=0,genome_fasta=None,max_RTT_length=40,min_distance_RTT5=5,max_target_to_sgRNA=10,**kwargs):
+	def init(self,gRNA_search_space=200,search_iteration=1,sgRNA_length=20,PAM="NGG",offset=-3,debug=0,genome_fasta=None,max_RTT_length=40,min_distance_RTT5=5,max_target_to_sgRNA=10,max_max_target_to_sgRNA=25,**kwargs):
 		"""First step: search for candidate sgRNAs around target mutation
 		
 		Input
@@ -185,12 +186,19 @@ class target_mutation:
 					df.to_csv("%s/%s.init.all_sgRNAs.bed"%(self.debug_folder,self.name),sep="\t",header=False,index=False)
 
 				self.valid_init_sgRNA = df[df.target_distance.between(0,max_target_to_sgRNA)][[0,1,2,3,4,5,'cut']]
-				
-				
+				current_max_target_to_sgRNA = max_target_to_sgRNA+5
+				while self.valid_init_sgRNA.shape[0] == 0:
+					if current_max_target_to_sgRNA > max_max_target_to_sgRNA:
+						break
+					self.valid_init_sgRNA = df[df.target_distance.between(0,max_target_to_sgRNA)][[0,1,2,3,4,5,'cut']]
+					if self.valid_init_sgRNA.shape[0] > 0:
+						print ("max_target_to_sgRNA increased from %s to %s"%(max_target_to_sgRNA,current_max_target_to_sgRNA))
+					current_max_target_to_sgRNA += 5
 				## sgRNA features
 				self.sgRNA_target_distance_dict = df['target_distance'].to_dict()
 				if debug > 5:
 					print (df[df.target_distance.between(0,max_target_to_sgRNA)])
+					print (df[df.target_distance.between(0,current_max_target_to_sgRNA)])
 				df = df.drop(['target_distance'],axis=1)
 				if self.valid_init_sgRNA.shape[0] == 0:
 					print ("No sgRNA was found for %s using %s gRNA_search_space"%(self.name,extend))
@@ -286,8 +294,9 @@ class target_mutation:
 			return 0
 		with open(ML_model, 'rb') as file:  
 			xgb_model = pickle.load(file)		
-
-		pred_y = xgb_model.predict(self.X[self.feature_for_prediction])
+		self.X = self.X[self.feature_for_prediction]
+		self.X.columns = self.feature_rename
+		pred_y = xgb_model.predict(self.X)
 
 		myPred = pd.DataFrame()
 		myPred['predicted_efficiency'] = pred_y.tolist()

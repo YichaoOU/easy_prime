@@ -72,7 +72,8 @@ class sgRNA:
 		# self.RTT_feature_list = []
 		# self.ngRNA_feature_list = []
 		self.PBS_feature_list = ["PBS_GC",'PBS_length']
-		self.RTT_feature_list = ["target_to_RTT5","RTT_GC","RTT_length","0","1","2","3","4","5","6","7","8","9","10","11","12","13"]
+		# self.RTT_feature_list = ["target_to_RTT5","RTT_GC","RTT_length","0","1","2","3","4","5","6","7","8","9","10","11","12","13"]
+		self.RTT_feature_list = ["target_to_RTT5","RTT_GC","RTT_length","0","1","2","3","4","5","6","7","8","9"]
 		self.ngRNA_feature_list = ['sgRNA_distance_to_ngRNA','is_PE3b']
 		
 		self.rawX = pd.DataFrame()
@@ -126,7 +127,184 @@ class sgRNA:
 		self.PBS_df['PBS_length'] = [len(x) for x in self.PBS_df['seq'] ]
 		
 
-	def find_RTT(self,min_RTT_length=7,max_RTT_length=40,min_distance_RTT5=5,**kwargs):
+	def find_RTT(self,min_RTT_length=10,max_RTT_length=20,max_max_RTT_length=40,min_distance_RTT5=5,**kwargs):
+		"""find RTT sequences as bed format df
+		
+		Output
+		--------
+		
+		RTT_df
+		
+		RTT_feature_list
+		
+		"""
+		out = []
+		chr = self.chr
+		pbs_start = None
+		pbs_end = None
+		user_max_RTT_length = max_RTT_length
+		large_deletion_flag=False
+		if len(self.ref)+min_distance_RTT5 > max_RTT_length: ## in case of large deletion
+			large_deletion_flag = True
+			max_RTT_length = max_RTT_length+len(self.ref)
+		# target_to_RTT5_feature=[]
+		if self.strand=="+":
+			start = self.cut_position # remember out cut position, the actual nucleotide, we use -4
+			pbs_end = start
+			pbs_start = pbs_end - 14 
+			for l in range(min_RTT_length,max_RTT_length+1):
+				end = start+l
+				if start+1<=self.target_pos <=end-min_distance_RTT5:
+					out.append([chr,start,end,end-self.target_pos])
+		if self.strand=="-":
+			end = self.cut_position - 1
+			pbs_start = end
+			pbs_end = pbs_start + 14 
+			for l in range(min_RTT_length,max_RTT_length+1):
+				start = end-l
+				if end>=self.target_pos >=start+1+min_distance_RTT5:
+					out.append([chr,start,end,self.target_pos-start-1])	
+					
+		current_max_RTT_length = max_RTT_length+5
+		while len(out) == 0:
+			if current_max_RTT_length > max_max_RTT_length:
+				break
+			out,_,no_RTT_flag = self.find_longer_RTT(min_RTT_length=min_RTT_length,max_RTT_length=current_max_RTT_length,min_distance_RTT5=min_distance_RTT5,**kwargs)
+			if len(out) > 0:
+				print ("max_RTT_length increased from %s to %s"%(max_RTT_length,current_max_RTT_length))
+			current_max_RTT_length += 5
+					
+		if len(out) == 0:
+			## valid RTT not found
+			self.no_RTT = True
+			
+			return 0
+		self.RTT_df = pd.DataFrame(out)
+		self.RTT_df.columns = ['chr','start','end','target_to_RTT5']
+		self.RTT_df["strand"] = get_opposite_strand(self.strand)
+		self.RTT_df.index = ["%s_RTT_%s"%(self.uid,i) for i in range(self.RTT_df.shape[0])]
+		temp = get_fasta_simple(self.target_fa,self.RTT_df, self.user_target_pos)
+		self.RTT_df['old_seq'] = temp[3].tolist()
+		
+		## add variant
+		# relative_pos = self.target_pos-r['start']-1 # start is 0-index
+		self.RTT_df['seq'] = [self.add_variant(r['old_seq'],self.target_pos-r['start']-1,self.ref,self.alt) for i,r in self.RTT_df.iterrows()]
+		self.RTT_df = self.RTT_df[self.RTT_df['seq']!=0]
+		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
+			self.RTT_df['seq'] = [revcomp(x) for x in self.RTT_df['seq']]
+		# print (self.RTT_df)
+		self.RTT_df['RTT_length'] = [len(x) for x in self.RTT_df['seq'] ]
+		if large_deletion_flag:
+			self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']<=user_max_RTT_length]
+		self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']>=min_RTT_length]
+		
+		current_max_RTT_length = max_RTT_length+5
+		while self.RTT_df.shape[0] == 0:
+			if current_max_RTT_length > max_max_RTT_length:
+				break
+			_,RTT_df,no_RTT_flag = self.find_longer_RTT(min_RTT_length=min_RTT_length,max_RTT_length=current_max_RTT_length,min_distance_RTT5=min_distance_RTT5,**kwargs)
+			if RTT_df.shape[0] > 0:
+				print ("max_RTT_length increased from %s to %s"%(max_RTT_length,current_max_RTT_length))
+				self.RTT_df = RTT_df
+			current_max_RTT_length += 5		
+
+		
+		
+		if self.RTT_df.shape[0] == 0:
+			## valid RTT not found
+			self.no_RTT = True
+			return 0
+		# filter out first C
+		self.RTT_df['firstC'] = [x[0] for x in self.RTT_df['seq']]
+		self.RTT_df = self.RTT_df[self.RTT_df['firstC']!="C"]
+		self.RTT_df = self.RTT_df.drop(['firstC'],axis=1)
+		if self.RTT_df.shape[0] == 0:
+			## valid RTT not found
+			self.no_RTT = True
+			return 0
+		
+		## make features
+		attached_minimal_PBS = sub_fasta_single(self.target_fa,self.user_target_pos, pbs_start,pbs_end)
+		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
+			attached_minimal_PBS = revcomp(attached_minimal_PBS)
+		# print ("attached_minimal_PBS",attached_minimal_PBS)
+		# print (self.RTT_df)
+
+		
+		self.RTT_df['RNAfold_seq']= [(self.scaffold_seq+x+attached_minimal_PBS).replace("T","U") for x in self.RTT_df['seq']]
+		RNAfold_features_df = pd.DataFrame([call_RNAplfold(x,len(self.scaffold_seq))for x in self.RTT_df['RNAfold_seq']])
+		# print (RNAfold_features_df)
+		RNAfold_features_df.index = self.RTT_df.index.tolist()
+		self.RTT_df = pd.concat([self.RTT_df,RNAfold_features_df],axis=1)
+		self.RTT_df['RTT_GC'] = [GC_content(x) for x in self.RTT_df['seq'] ]
+		
+		self.RTT_df.columns = [str(x) for x in self.RTT_df.columns]
+		
+		# print (self.RTT_df)
+		
+	def find_longer_RTT(self,min_RTT_length=10,max_RTT_length=20,min_distance_RTT5=5,**kwargs):
+		"""find RTT sequences as bed format df
+		
+		Output
+		--------
+		
+		RTT_df
+		
+		RTT_feature_list
+		
+		"""
+		out = []
+		chr = self.chr
+		pbs_start = None
+		pbs_end = None
+		user_max_RTT_length = max_RTT_length
+		large_deletion_flag=False
+		if len(self.ref)+min_distance_RTT5 > max_RTT_length: ## in case of large deletion
+			large_deletion_flag = True
+			max_RTT_length = max_RTT_length+len(self.ref)
+		# target_to_RTT5_feature=[]
+		if self.strand=="+":
+			start = self.cut_position # remember out cut position, the actual nucleotide, we use -4
+			pbs_end = start
+			pbs_start = pbs_end - 14 
+			for l in range(min_RTT_length,max_RTT_length+1):
+				end = start+l
+				if start+1<=self.target_pos <=end-min_distance_RTT5:
+					out.append([chr,start,end,end-self.target_pos])
+		if self.strand=="-":
+			end = self.cut_position - 1
+			pbs_start = end
+			pbs_end = pbs_start + 14 
+			for l in range(min_RTT_length,max_RTT_length+1):
+				start = end-l
+				if end>=self.target_pos >=start+1+min_distance_RTT5:
+					out.append([chr,start,end,self.target_pos-start-1])	
+		if len(out) == 0:
+			return out,self.RTT_df,True
+		self.RTT_df = pd.DataFrame(out)
+		self.RTT_df.columns = ['chr','start','end','target_to_RTT5']
+		self.RTT_df["strand"] = get_opposite_strand(self.strand)
+		self.RTT_df.index = ["%s_RTT_%s"%(self.uid,i) for i in range(self.RTT_df.shape[0])]
+		temp = get_fasta_simple(self.target_fa,self.RTT_df, self.user_target_pos)
+		self.RTT_df['old_seq'] = temp[3].tolist()
+		
+		## add variant
+		# relative_pos = self.target_pos-r['start']-1 # start is 0-index
+		self.RTT_df['seq'] = [self.add_variant(r['old_seq'],self.target_pos-r['start']-1,self.ref,self.alt) for i,r in self.RTT_df.iterrows()]
+		self.RTT_df = self.RTT_df[self.RTT_df['seq']!=0]
+		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
+			self.RTT_df['seq'] = [revcomp(x) for x in self.RTT_df['seq']]
+		# print (self.RTT_df)
+		self.RTT_df['RTT_length'] = [len(x) for x in self.RTT_df['seq'] ]
+		if large_deletion_flag:
+			self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']<=user_max_RTT_length]
+		self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']>=min_RTT_length]
+		if self.RTT_df.shape[0] == 0:
+			return out,self.RTT_df,True
+		return out,self.RTT_df,False
+			
+
+	def find_RTT2(self,min_RTT_length=10,max_RTT_length=20,max_max_RTT_length=40,min_distance_RTT5=5,**kwargs):
 		"""find RTT sequences as bed format df
 		
 		Output

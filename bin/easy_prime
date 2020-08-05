@@ -27,7 +27,7 @@ def my_args():
 	
 	mainParser.add_argument('-f','--vcf_file',  help="input target mutations to look for pegRNAs",required=True)
 	mainParser.add_argument('-c','--config',  help="A YAML file specifying parameters",default=None)
-	mainParser.add_argument('-v','--version',  help="print version",default=easy_prime.__version__)
+	mainParser.add_argument('-v','--version', action='version', version='Easy-Prime version: %s'%(easy_prime.__version__))
 	mainParser.add_argument('-o','--output',  help="output dir",default="easy_prime_%s_%s_result_dir"%(username,str(datetime.date.today())))
 	
 	##------- add parameters above ---------------------
