@@ -55,7 +55,7 @@ def get_parameters(config):
 	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.py"
 	
 	#------------ PBS -----------
-	pre_defined_list["min_PBS_length"] = 11
+	pre_defined_list["min_PBS_length"] = 10
 	pre_defined_list["max_PBS_length"] = 15
 	
 	#------------ RTT -----------
@@ -70,7 +70,7 @@ def get_parameters(config):
 	pre_defined_list["offset"] = -3
 	pre_defined_list["PAM"] = "NGG"
 	pre_defined_list["max_target_to_sgRNA"] = 10 # if no candidate is found, this value will be increased by 5, max to max_max_target_to_sgRNA
-	pre_defined_list["max_max_target_to_sgRNA"] = 25
+	pre_defined_list["max_max_target_to_sgRNA"] = 30
 	
 	#------------ ngRNA ------------
 	pre_defined_list["max_ngRNA_distance"] = 100 # if no candidate is found, this value will be increased by 20, max to max_max_ngRNA_distance
