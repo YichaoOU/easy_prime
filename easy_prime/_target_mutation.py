@@ -106,7 +106,7 @@ class target_mutation:
 		self.dist_dict = {} ## sgRNA_ngRNA_distance_dict
 
 		
-	def init(self,gRNA_search_space=200,search_iteration=1,sgRNA_length=20,PAM="NGG",offset=-3,debug=0,genome_fasta=None,max_RTT_length=40,min_distance_RTT5=5,max_target_to_sgRNA=10,max_max_target_to_sgRNA=25,**kwargs):
+	def init(self,gRNA_search_space=200,search_iteration=1,sgRNA_length=20,PAM="NGG",offset=-3,debug=0,genome_fasta=None,max_RTT_length=40,min_distance_RTT5=5,max_target_to_sgRNA=10,max_max_target_to_sgRNA=30,**kwargs):
 		"""First step: search for candidate sgRNAs around target mutation
 		
 		Input
@@ -141,6 +141,7 @@ class target_mutation:
 		
 		"""
 		## debug folder
+
 		if debug>0:
 			subprocess.call("mkdir -p %s"%(self.debug_folder),shell=True)
 		## setup
@@ -183,10 +184,12 @@ class target_mutation:
 				
 				## gRNA validation given target mutation
 				if debug > 5:
+					print ("total sgRNA found (contain invalid sgRNAs): %s"%(df.shape[0]))
 					df.to_csv("%s/%s.init.all_sgRNAs.bed"%(self.debug_folder,self.name),sep="\t",header=False,index=False)
 
 				self.valid_init_sgRNA = df[df.target_distance.between(1,max_target_to_sgRNA)][[0,1,2,3,4,5,'cut']]
 				current_max_target_to_sgRNA = max_target_to_sgRNA+5
+
 				while self.valid_init_sgRNA.shape[0] == 0:
 					if debug>=10:
 						print ("increasing max_target_to_sgRNA to:", current_max_target_to_sgRNA)
@@ -195,6 +198,7 @@ class target_mutation:
 					self.valid_init_sgRNA = df[df.target_distance.between(1,current_max_target_to_sgRNA)][[0,1,2,3,4,5,'cut']]
 					if self.valid_init_sgRNA.shape[0] > 0:
 						print ("max_target_to_sgRNA increased from %s to %s"%(max_target_to_sgRNA,current_max_target_to_sgRNA))
+						break
 					current_max_target_to_sgRNA += 5
 				## sgRNA features
 				self.sgRNA_target_distance_dict = df['target_distance'].to_dict()

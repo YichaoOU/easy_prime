@@ -38,6 +38,8 @@ def my_args():
 	
 	mainParser.add_argument('-f','--rawX',  help="input rawX format, last column with predicted efficiency",required=True)
 	mainParser.add_argument('-s','--genome_fasta',  help="A YAML file specifying parameters",required=True)
+	mainParser.add_argument('-t','--figure_type',  help="png or pdf",default="png")
+	mainParser.add_argument('--output_file_name',  help="use only when plot one pegRNA, output_file_name",default=None)
 	mainParser.add_argument('-o','--output',  help="output dir",default="easy_prime_vis_%s_%s"%(username,str(datetime.date.today())))
 	
 	##------- add parameters above ---------------------
@@ -64,7 +66,7 @@ def get_strand(x):
 	else:
 		return -1
 
-def plot_main(df,output=None,genome_fasta=None,**kwargs):
+def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_name=None,**kwargs):
 	"""Given one instance of easy-prime prediction (rawX format), generate DNA visualization
 	
 	Input
@@ -113,7 +115,10 @@ def plot_main(df,output=None,genome_fasta=None,**kwargs):
 			new_labels.append(int(start+i+1))
 	plt.xticks(locs,new_labels)
 	plt.title("ID: %s, CHR: %s, POS: %s, REF: %s, ALT: %s \n Predicted efficiency: %.1f"%(variant_id,chr,variant_pos,ref,alt,predicted_efficiency)+"%")
-	ax.figure.savefig(f'{output}/{pegRNA_id}.pdf', bbox_inches='tight')
+	if output_file_name!= None:
+		ax.figure.savefig(output_file_name, bbox_inches='tight')
+	else:
+		ax.figure.savefig(f'{output}/{pegRNA_id}.{figure_type}', bbox_inches='tight')
 
 
 def main():

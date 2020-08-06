@@ -172,6 +172,7 @@ class sgRNA:
 			out,_,no_RTT_flag = self.find_longer_RTT(min_RTT_length=min_RTT_length,max_RTT_length=current_max_RTT_length,min_distance_RTT5=min_distance_RTT5,**kwargs)
 			if len(out) > 0:
 				print ("max_RTT_length increased from %s to %s"%(max_RTT_length,current_max_RTT_length))
+				break
 			current_max_RTT_length += 5
 					
 		if len(out) == 0:
@@ -213,6 +214,7 @@ class sgRNA:
 			if RTT_df.shape[0] > 0:
 				print ("max_RTT_length increased from %s to %s"%(max_RTT_length,current_max_RTT_length))
 				self.RTT_df = RTT_df
+				break
 			current_max_RTT_length += 5		
 
 		

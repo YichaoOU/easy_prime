@@ -1,5 +1,5 @@
 genome_fasta: /Users/yli11/Data/hg19.fa
 gRNA_search_space: 200
-debug: 20
+debug: 0
 
 
