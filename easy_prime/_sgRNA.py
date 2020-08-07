@@ -311,88 +311,6 @@ class sgRNA:
 		return out,self.RTT_df,False
 			
 
-	def find_RTT2(self,min_RTT_length=10,max_RTT_length=20,max_max_RTT_length=40,min_distance_RTT5=5,**kwargs):
-		"""find RTT sequences as bed format df
-		
-		Output
-		--------
-		
-		RTT_df
-		
-		RTT_feature_list
-		
-		"""
-		out = []
-		chr = self.chr
-		pbs_start = None
-		pbs_end = None
-		user_max_RTT_length = max_RTT_length
-		large_deletion_flag=False
-		if len(self.ref)+min_distance_RTT5 > max_RTT_length: ## in case of large deletion
-			large_deletion_flag = True
-			max_RTT_length = max_RTT_length+len(self.ref)
-		# target_to_RTT5_feature=[]
-		if self.strand=="+":
-			start = self.cut_position # remember out cut position, the actual nucleotide, we use -4
-			pbs_end = start
-			pbs_start = pbs_end - 14 
-			for l in range(min_RTT_length,max_RTT_length+1):
-				end = start+l
-				if start+1<=self.target_pos <=end-min_distance_RTT5:
-					out.append([chr,start,end,end-self.target_pos])
-		if self.strand=="-":
-			end = self.cut_position - 1
-			pbs_start = end
-			pbs_end = pbs_start + 14 
-			for l in range(min_RTT_length,max_RTT_length+1):
-				start = end-l
-				if end>=self.target_pos >=start+1+min_distance_RTT5:
-					out.append([chr,start,end,self.target_pos-start-1])	
-		if len(out) == 0:
-			## valid RTT not found
-			self.no_RTT = True
-			return 0
-		self.RTT_df = pd.DataFrame(out)
-		self.RTT_df.columns = ['chr','start','end','target_to_RTT5']
-		self.RTT_df["strand"] = get_opposite_strand(self.strand)
-		self.RTT_df.index = ["%s_RTT_%s"%(self.uid,i) for i in range(self.RTT_df.shape[0])]
-		temp = get_fasta_simple(self.target_fa,self.RTT_df, self.user_target_pos)
-		self.RTT_df['old_seq'] = temp[3].tolist()
-		
-		## add variant
-		# relative_pos = self.target_pos-r['start']-1 # start is 0-index
-		self.RTT_df['seq'] = [self.add_variant(r['old_seq'],self.target_pos-r['start']-1,self.ref,self.alt) for i,r in self.RTT_df.iterrows()]
-		self.RTT_df = self.RTT_df[self.RTT_df['seq']!=0]
-		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
-			self.RTT_df['seq'] = [revcomp(x) for x in self.RTT_df['seq']]
-		# print (self.RTT_df)
-		self.RTT_df['RTT_length'] = [len(x) for x in self.RTT_df['seq'] ]
-		if large_deletion_flag:
-			self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']<=user_max_RTT_length]
-		self.RTT_df = self.RTT_df[self.RTT_df['RTT_length']>=min_RTT_length]
-		if self.RTT_df.shape[0] == 0:
-			## valid RTT not found
-			self.no_RTT = True
-			return 0
-		## make features
-		attached_minimal_PBS = sub_fasta_single(self.target_fa,self.user_target_pos, pbs_start,pbs_end)
-		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
-			attached_minimal_PBS = revcomp(attached_minimal_PBS)
-		# print ("attached_minimal_PBS",attached_minimal_PBS)
-		# print (self.RTT_df)
-
-		
-		self.RTT_df['RNAfold_seq']= [(self.scaffold_seq+x+attached_minimal_PBS).replace("T","U") for x in self.RTT_df['seq']]
-		RNAfold_features_df = pd.DataFrame([call_RNAplfold(x,len(self.scaffold_seq))for x in self.RTT_df['RNAfold_seq']])
-		# print (RNAfold_features_df)
-		RNAfold_features_df.index = self.RTT_df.index.tolist()
-		self.RTT_df = pd.concat([self.RTT_df,RNAfold_features_df],axis=1)
-		self.RTT_df['RTT_GC'] = [GC_content(x) for x in self.RTT_df['seq'] ]
-		
-		self.RTT_df.columns = [str(x) for x in self.RTT_df.columns]
-		
-		# print (self.RTT_df)
-
 	def make_PE3b_ngRNA(self,myIndex,start,end,seq,strand):
 		"""check if target mutation overlaps with ngRNA and update its sequence
 		
@@ -578,11 +496,18 @@ class sgRNA:
 		for s in temp:
 			count += 1
 			current_index = "%s_%s_candidate_%s"%(self.variant_id,self.sgRNA_name,count)
+			# current_index = "%s_%s"%(self.variant_id,count) # shorter name
 			if count == 1  and debug>10:
 				print (current_index)
 			PBS_selected_rows.append(s[0])
 			RTT_selected_rows.append(s[1])
 			ngRNA_selected_rows.append(s[2])
+			if self.ngRNA_df.at[s[2],'is_PE3b']==1:
+				current_index+="_PE3b"
+				# print (s[2],"PE3B")
+			if self.is_dPAM:
+				current_index+="_dPAM"	
+				# print (self.sgRNA_name,"dPAM")		
 			X_index.append(current_index)
 			
 			
@@ -618,7 +543,7 @@ class sgRNA:
 		X_ngRNA = self.ngRNA_df.loc[ngRNA_selected_rows][self.ngRNA_feature_list]
 		X_ngRNA = X_ngRNA.reset_index(drop=True)
 		self.X = pd.concat([X_PBS,X_RTT,X_ngRNA],axis=1)
-		self.X.index = X_index
+		self.X.index = X_index	
 		self.X['is_dPAM'] = self.is_dPAM
 		self.X['target_to_sgRNA'] = self.target_to_sgRNA
 

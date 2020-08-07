@@ -39,7 +39,7 @@ def my_args():
 	mainParser.add_argument('-f','--rawX',  help="input rawX format, last column with predicted efficiency",required=True)
 	mainParser.add_argument('-s','--genome_fasta',  help="A YAML file specifying parameters",required=True)
 	mainParser.add_argument('-t','--figure_type',  help="png or pdf",default="png")
-	mainParser.add_argument('--output_file_name',  help="use only when plot one pegRNA, output_file_name",default=None)
+	mainParser.add_argument('--output_file_name',  help="use only when plot one pegRNA, output_file_name.figure_type, will overwrite -t -o options.",default=None)
 	mainParser.add_argument('-o','--output',  help="output dir",default="easy_prime_vis_%s_%s"%(username,str(datetime.date.today())))
 	
 	##------- add parameters above ---------------------
