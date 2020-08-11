@@ -65,6 +65,21 @@ def get_strand(x):
 		return 1
 	else:
 		return -1
+def find_mutation_pos(pos,ref,alt):
+	"""solve the problem when user specification of ref, alt contain redundancy
+	ATTTT-> ATTT, should be T -> ""
+	G - > GC will  be "" C
+	"""
+	count=0
+	for i in range(min(len(ref),len(alt))):
+		x=ref[i]
+		y=alt[i]
+		if x != y:
+			return pos,ref[i:],alt[i:]
+		else:
+			pos+=1
+			count+=1
+	return pos,ref[count:],alt[count:]
 
 def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_name=None,**kwargs):
 	"""Given one instance of easy-prime prediction (rawX format), generate DNA visualization
@@ -87,8 +102,10 @@ def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_nam
 	variant_pos = df.POS.min()
 	ref = df.REF[0]
 	alt = df.ALT[0]
+	correct_pos,new_ref,new_alt = find_mutation_pos(variant_pos,ref,alt)
 	predicted_efficiency = df.predicted_efficiency[0]*100
 	pos = variant_pos-start
+	pos_rel_correct = correct_pos-start
 	sequence = get_fasta_single(chr,start,end,genome_fasta).upper()
 	
 	feature_list = []
@@ -103,7 +120,11 @@ def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_nam
 
 	ax, _ = record.plot(figure_width=int(len(sequence)/5))
 	record.plot_sequence(ax)
-	ax.fill_between((pos-1.5, pos-0.5), +1000, -1000, alpha=0.5,color=my_colors['variant'])
+	if len(new_ref) > 0:
+		for xxx in range(len(new_ref)):
+			ax.fill_between((pos_rel_correct-1.5+xxx, pos_rel_correct-0.5+xxx), +1000, -1000, alpha=0.5,color=my_colors['variant'])
+	else:
+		ax.fill_between((pos-1.5, pos-0.5), +1000, -1000, alpha=0.5,color=my_colors['variant'])
 	locs, labels = plt.xticks()
 	new_labels = []
 	flag = True
@@ -114,7 +135,17 @@ def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_nam
 		else:
 			new_labels.append(int(start+i+1))
 	plt.xticks(locs,new_labels)
-	plt.title("ID: %s, CHR: %s, POS: %s, REF: %s, ALT: %s \n Predicted efficiency: %.1f"%(variant_id,chr,variant_pos,ref,alt,predicted_efficiency)+"%")
+	dPAM=""
+	if "dPAM" in pegRNA_id:
+		dPAM = "PAM disruption"
+	if "PE3b" in pegRNA_id:
+		dPAM += ", PE3b"
+	if dPAM!="":
+		dPAM += "\n"
+	myTitle = "ID: %s, CHR: %s, POS: %s, REF: %s, ALT: %s \n %s Predicted efficiency: %.1f"%(variant_id,chr,variant_pos,ref,alt,dPAM,predicted_efficiency)+"%"
+	
+
+	plt.title(myTitle)
 	if output_file_name!= None:
 		ax.figure.savefig(output_file_name, bbox_inches='tight')
 	else:

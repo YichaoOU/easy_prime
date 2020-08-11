@@ -3,7 +3,7 @@ from .utils import *
 # from utils import *
 	
 class sgRNA:
-	def __init__(self,chr=None,start=None,end=None,seq=None,sgRNA_name=None,strand=None,cut_position=None,mutation_pos = None,mutation_ref = None,mutation_alt = None,variant_id=None,dist_dict=None,opposite_strand_sgRNAs=None,all_sgRNA_df=None,target_fa=None,scaffold_seq=None,user_target_pos=None,user_ref=None,user_alt=None,is_dPAM=None,target_to_sgRNA=None,**kwargs):
+	def __init__(self,chr=None,start=None,end=None,seq=None,sgRNA_name=None,strand=None,cut_position=None,mutation_pos = None,mutation_ref = None,mutation_alt = None,variant_id=None,dist_dict=None,opposite_strand_sgRNAs=None,all_sgRNA_df=None,target_fa=None,scaffold_seq=None,user_target_pos=None,user_ref=None,user_alt=None,offset=None,target_to_sgRNA=None,PAM=None,**kwargs):
 	
 		"""
 		
@@ -40,7 +40,9 @@ class sgRNA:
 		self.seq = seq
 		self.variant_id = variant_id
 		self.target_to_sgRNA = target_to_sgRNA
-		self.is_dPAM = is_dPAM
+		self.is_dPAM = 0
+		self.PAM = PAM
+		self.offset = offset
 		self.sgRNA_name = sgRNA_name
 		# print ("init",sgRNA_name)
 		self.uid = str(uuid.uuid4()).split("-")[-1]
@@ -117,7 +119,7 @@ class sgRNA:
 		self.PBS_df.columns = ['chr','start','end']
 		self.PBS_df["strand"] = get_opposite_strand(self.strand)
 		self.PBS_df.index = ["%s_PBS_%s"%(self.uid,i) for i in range(self.PBS_df.shape[0])]
-		temp = get_fasta_simple(self.target_fa,self.PBS_df, self.target_pos)
+		temp = get_fasta_simple(self.target_fa,self.PBS_df, self.user_target_pos)
 		self.PBS_df['seq'] = temp[3].tolist()
 		
 		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
@@ -242,7 +244,7 @@ class sgRNA:
 		self.RTT_df['RTT_GC'] = [GC_content(x) for x in self.RTT_df['seq'] ]
 		
 		self.RTT_df.columns = [str(x) for x in self.RTT_df.columns]
-		
+		self.is_dPAM = is_dPAM(self.PAM, self.RTT_df['seq'][0], self.offset)
 		# print (self.RTT_df)
 		
 	def find_longer_RTT(self,min_RTT_length=10,max_RTT_length=20,min_distance_RTT5=5,**kwargs):
@@ -477,8 +479,10 @@ class sgRNA:
 		
 		if self.no_RTT:
 			return 0
-		## allow PE2 cases
+		## not allow PE2 cases
 		if self.no_ngRNA:
+			print ("no_ngRNA found",self.sgRNA_name)
+			return 0
 			self.ngRNA_df=pd.DataFrame([np.nan]*(len(self.ngRNA_feature_list)+len(rawX_columns))).T
 			self.ngRNA_df.columns = rawX_columns + self.ngRNA_feature_list
 		if debug>=10:

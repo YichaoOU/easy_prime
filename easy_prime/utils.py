@@ -251,7 +251,7 @@ def distance_matrix(lines):
 
 
 
-def is_gRNA_valid(cas9_cut_position,target_mutation,strand):
+def is_gRNA_valid(cas9_cut_position,target_mutation,strand,user_target_mutation_pos,diff):
 	# cas9_cut_position=[chr,pos], pos is 1-based position, same as in vcf file
 	# target_mutation=[chr,pos], pos is 1-based position, same as in vcf file
 	"""
@@ -260,6 +260,8 @@ def is_gRNA_valid(cas9_cut_position,target_mutation,strand):
 	The position of the target mutation should be:
 	On the right of the cas9 cut position if gRNA strand is +
 	On the left of the cas9 cut position if gRNA strand is -
+
+	user_target_mutation_pos, mutation correct cause bug when strand = -
 	
 	Return
 	------
@@ -271,12 +273,19 @@ def is_gRNA_valid(cas9_cut_position,target_mutation,strand):
 	if cas9_cut_position[0] != target_mutation[0]:
 		return -1
 	distance = int(target_mutation[1]-cas9_cut_position[1])
+	# print (cas9_cut_position,target_mutation,strand,user_target_mutation_pos,diff,distance)
 	if strand=="+":
 		if distance>=0:
 			return distance
 	if strand=="-":
+		if distance == 0:
+			if user_target_mutation_pos != target_mutation[1]:
+				distance = -1
 		if distance<=0:
-			return -distance	
+			distance = -distance
+			if diff > 0:
+				distance  = distance - diff + 1
+			return distance	
 	return -1
 	
 	
@@ -392,7 +401,7 @@ def global_alignments(ref,q):
 
 
 
-def is_dPAM(PAM_seq, target_pos,ref,alt,pegRNA_loc):
+def is_dPAM2(PAM_seq, target_pos,ref,alt,pegRNA_loc):
 	# currently accept N as ambiguos letter, R will cause error
 	# report a bug in Biopython
 	# https://github.com/biopython/biopython/issues/3023
@@ -437,7 +446,20 @@ def is_dPAM(PAM_seq, target_pos,ref,alt,pegRNA_loc):
 	# out.index = ['is_dPAM']
 	# print ("flag",flag)
 	return flag
-	
+def is_dPAM(PAM_seq, RTT, cut_offset=-3):
+	# Assuming no N is RTT, which should be true
+	# match PAM seq to RTT, should be abs(cut_offset)
+	# print (PAM_seq, RTT)
+	# will need to do revcomp no matter what, because RTT is always xxxxxxxPAM
+
+	seq = revcomp(RTT)
+	fwd_search = SeqUtils.nt_search(seq, PAM_seq)
+	flag = 1
+	if len(fwd_search) > 1:
+		if abs(cut_offset) in fwd_search:
+			flag = 0
+
+	return flag	
 	
 def target_to_RTT5_feature(pegRNA,nick_gRNA,target_loc,RTS_length,alt_length):
 	# 1. target mutation distance to cut 1 (pegRNA)

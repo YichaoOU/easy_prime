@@ -172,7 +172,7 @@ class target_mutation:
 				# ooo|abcNGG
 				# -3-2-1|123NGG
 				# in the above example, b has a distance of 2 to the cut site
-				df['target_distance'] = [is_gRNA_valid([r[0],r['cut']],[self.chr,self.mutation_pos],r[5]) for i,r in df.iterrows()]
+				df['target_distance'] = [is_gRNA_valid([r[0],r['cut']],[self.chr,self.mutation_pos],r[5],self.target_pos,len(self.mutation_ref)) for i,r in df.iterrows()]
 				# print (df)
 																	# 0         1         2  ...         		           5    cut                 target_distance
 				# chr20_55990386_55990406_+_CGCAGGGGCCGATAAGTGTC  chr20  55990386  55990406  ...  +  55990403               2
@@ -216,7 +216,8 @@ class target_mutation:
 					self.sgRNA_strand_df['+'] = df[df[5]=="+"][[0,1,2,3,4,5]]
 					self.sgRNA_strand_df['-'] = df[df[5]=="-"][[0,1,2,3,4,5]]
 					self.all_sgRNA = df.copy()
-					self.sgRNA_target_dPAM_dict = {i: is_dPAM(self.PAM, self.target_pos,self.ref,self.alt,r[0:4].tolist()) for i, r in self.valid_init_sgRNA.iterrows()}
+					# self.sgRNA_target_dPAM_dict = {i: is_dPAM(PAM_seq, RTT, self.offset) for i, r in self.valid_init_sgRNA.iterrows()}
+					# self.sgRNA_target_dPAM_dict = {i: is_dPAM(self.PAM, self.target_pos,self.ref,self.alt,r[0:4].tolist()) for i, r in self.valid_init_sgRNA.iterrows()}
 					
 					
 					break
@@ -262,13 +263,14 @@ class target_mutation:
 								cut_position = x[6],
 								mutation_pos = self.mutation_pos,mutation_ref = self.mutation_ref,mutation_alt = self.mutation_alt,
 								user_target_pos = self.target_pos,user_ref = self.ref,user_alt = self.alt,
-								is_dPAM = self.sgRNA_target_dPAM_dict[x[4]],target_to_sgRNA = self.sgRNA_target_distance_dict[x[4]],
+								offset = self.offset,target_to_sgRNA = self.sgRNA_target_distance_dict[x[4]],
 								variant_id = self.name,
 								dist_dict = self.dist_dict,
 								opposite_strand_sgRNAs = self.sgRNA_strand_df[get_opposite_strand(x[5])],
 								all_sgRNA_df = self.all_sgRNA,
 								target_fa = self.target_fa,
-								scaffold_seq = scaffold
+								scaffold_seq = scaffold,
+								PAM = self.PAM
 								) 
 						for x in self.valid_init_sgRNA.values.tolist()]
 
