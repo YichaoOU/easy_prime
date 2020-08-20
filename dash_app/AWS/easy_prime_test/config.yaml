@@ -1,0 +1,2 @@
+genome_fasta: hg19.fa
+n_jobs: 1
