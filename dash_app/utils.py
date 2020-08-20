@@ -5,6 +5,9 @@ import dash_html_components as html
 import pandas as pd
 import plotly.graph_objs as go
 import dash_table
+from flask import Flask, send_from_directory
+from urllib.parse import quote as urlquote
+
 # import plotly_express as px
 from dash.dependencies import Input, Output, State
 import re
@@ -76,7 +79,7 @@ def get_strand(x):
 
 def vis_pegRNA(df_file,genome_fasta=None,out_file_name=None,**kwargs):
 
-	print ("call easy_prime vis")
+	# print ("call easy_prime vis")
 	subprocess.call(f"easy_prime_vis -f {df_file} -s {genome_fasta} --output_file_name results/{out_file_name}.png",shell=True)
 	fig = f"results/{out_file_name}.png"
 	with open(fig, "rb") as image_file:
@@ -167,7 +170,7 @@ def run_steps(t,**kwargs):
 def easy_prime_main(input_data,jid,parameters):
 	
 	## read vcf
-	print (f"jid: {jid}")
+	# print (f"jid: {jid}")
 	# vcf = pd.read_csv(input_data,comment="#",sep="\t",header=None)
 	# vcf[1] = vcf[1].astype(int)
 	# vcf =vcf.drop_duplicates(2) # remove duplicated names
@@ -202,7 +205,7 @@ def easy_prime_main(input_data,jid,parameters):
 			myDict = read_fasta(StringIO(input_data))
 			write_fasta(file_name,myDict)
 			vcf = fasta2vcf(file_name)
-			print (vcf)
+			# print (vcf)
 		except Exception as e:
 			print (e)
 			# print ("Can't read %s as vcf or fasta. Please check input. Exit..."%(input_data))
@@ -213,7 +216,7 @@ def easy_prime_main(input_data,jid,parameters):
 
 	## for each target, create target mutation class
 	# my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]
-	print (vcf)
+	# print (vcf)
 	## find best pegRNAs
 	df_list = [run_steps(t,**parameters) for t in my_targets]
 	
@@ -225,7 +228,7 @@ def easy_prime_main(input_data,jid,parameters):
 	
 	df_top = pd.concat([x[0] for x in df_list])
 	if df_top.shape[0]==0:
-		print ("no pegRNA (including PE2) were found for the input file")
+		# print ("no pegRNA (including PE2) were found for the input file")
 		return summary,pd.DataFrame(),pd.DataFrame(),pd.DataFrame()
 	df_top = df_top.sort_values("predicted_efficiency",ascending=False)
 	df_top.to_csv("results/%s_topX_pegRNAs.csv"%(jid),index=False)
@@ -242,7 +245,7 @@ def easy_prime_main(input_data,jid,parameters):
 #--------------------------------- Right Column --------------------------------------
 
 def init_fig():
-	print ("init figure")
+	# print ("init figure")
 	fig = "img/init.png"
 	with open(fig, "rb") as image_file:
 		img_string = base64.b64encode(image_file.read())
@@ -257,7 +260,7 @@ def encode_fig(pegRNA_id=None):
 
 def vis_PE_design(app,pegRNA_list):
 	## TODO add option when pegRNA_list=None
-	print (list(pegRNA_list[0].values())[0])
+	# print (list(pegRNA_list[0].values())[0])
 	dropdown = dcc.Dropdown(
 		id="select_pegRNA_id",
 		options=pegRNA_list,
@@ -299,7 +302,7 @@ def show_PE_table(app):
 	@app.callback(Output("pegRNA-table", "data"),
 		[Input('select_pegRNA_id', 'value')])
 	def update_output(pegRNA_id):
-		print ("update_output")
+		# print ("update_output")
 		return df.to_dict('records')
 	@app.callback(Output('topX', 'href'),
 		[Input('pegRNA-table', "page_current"),
@@ -316,7 +319,7 @@ def show_PE_table(app):
 		# print (csv_string)
 		return csv_string
 
-	print (df.head())
+	# print (df.head())
 	return dash_table.DataTable(
 			id='pegRNA-table',
 			columns=[
@@ -402,7 +405,7 @@ def buttons():
 
 
 
-	return html.Div([html.Button('Start', id='start_search',style={'margin-left':'8%'}),html.Button('Tutorial', id='help_menu',style={"float":"right",'margin-right':'8%'})])
+	return html.Div([html.Button('Start', id='start_search',style={'margin-left':'8%'}),html.A(html.Button('Tutorial', id='help_menu',style={"float":"right",'margin-right':'8%'}),href="https://github.com/YichaoOU/easy_prime",target='_blank')])
 
 
 def help():

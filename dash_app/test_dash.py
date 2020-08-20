@@ -4,14 +4,19 @@ import utils
 import imp  
 imp.reload(utils)
 from utils import *
-
+server = Flask(__name__)
 app = dash.Dash(
 	__name__,
 	meta_tags=[{"name": "viewport", "content": "width=800px, initial-scale=1"}],
+	server=server,
 )
 
-server = app.server
+# server = app.server
 app.config.suppress_callback_exceptions = True
+@server.route("/results/<path:path>")
+def download(path):
+    """Serve a file from the upload directory."""
+    return send_from_directory("results", path, as_attachment=True)
 
 ## a fake list
 pegRNA_list=[
@@ -80,7 +85,6 @@ app.layout = html.Div(
 				# PE table title
 				html.Div(style={"margin-top":"20px","margin-bottom":"10px",'font-weight':'bold','font-size':'20px'},children=['Sequences of top pegRNA and ngRNA combinations are shown below.']),
 				# show PE sequence table
-				# show_PE_table(app),
 				dash_table.DataTable(
 					id='pegRNA-table',
 					columns=[
@@ -125,12 +129,9 @@ app.layout = html.Div(
 					page_size= 13,
 				),
 
-				html.Div([
-					html.Div(html.A('Download top-pegRNAs.csv', id='topX', download="top_pegRNAs.csv",href="",target="_blank"),style={'width': '20%','display': 'inline-block'}),
-					html.Div(html.A('Download all-pegRNAs.csv', id='X_p', download="X_p_pegRNAs.csv",href="",target="_blank"),style={'width': '20%','display': 'inline-block'}),
-					html.Div(html.A('Download raw-pegRNAs.csv', id='rawX', download="rawX_pegRNAs.csv",href="",target="_blank"),style={'width': '20%','display': 'inline-block'})
-				]),
 
+				html.Div(id='download_data'),
+				
 
 			],
 		),
@@ -164,11 +165,11 @@ def search_pegRNA(n_clicks,pbs_value,rtt_value,ngRNA_value,genome,input_variants
 	"""
 
 	## get parameters
-	print ("search_pegRNA")
+	# print ("search_pegRNA")
 	if n_clicks == None:
 		return [None,None]
 	parameters = get_parameters("config.yaml")
-	print_parameters(parameters)
+	# print_parameters(parameters)
 
 
 
@@ -233,8 +234,38 @@ def update_vis_pegRNA(jid,select_pegRNA_id):
 	return img
 
 ## download data table (need jid)
-
-
+def file_download_link(filename):
+    """Create a Plotly Dash 'A' element that downloads a file from the app."""
+    location = "results/{}".format(urlquote(filename))
+    return html.A(filename, href=location,target="_blank")
+@app.callback(Output('download_data', 'children'), [Input('jid', 'value')])
+def download_predict_data(jid):
+	if jid == None:
+		return None
+		
+	return [
+				"Download files:",
+				html.Ul([
+					html.Li(file_download_link("%s_rawX_pegRNAs.csv.gz"%(jid))),
+					html.Li(file_download_link("%s_topX_pegRNAs.csv"%(jid))),
+					html.Li(file_download_link("%s_X_p_pegRNAs.csv.gz"%(jid)))
+				]),
+			]
+'''
+@app.callback(Output('topX', 'href'),
+	[Input('jid', 'value')]
+	)
+def download_topX(jid):
+	df = pd.read_csv("results/%s_topX_pegRNAs.csv"%(jid),index_col=0)
+	csv_string = df.to_csv(index=False, encoding='utf-8')
+	# print (df.head())
+	# print ("#### printing topX ####")
+	# csv_string = "data:text/csv;charset=utf-8,%EF%BB%BF" + urllib.parse.quote(csv_string)
+	# csv_string = "data:text/csv;charset=utf-8,%EF%BB%BF" + urllib.parse.quote(csv_string)
+	csv_string = "data:text/csv;charset=utf-8," + urllib.parse.quote(csv_string)
+	# print (csv_string)
+	return csv_string
+'''
 
 if __name__ == '__main__':
 	app.run_server(debug=False,host='0.0.0.0',port=8051)
