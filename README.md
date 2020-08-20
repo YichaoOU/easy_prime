@@ -48,7 +48,7 @@ easy_prime -c config.yaml -f test.vcf
 
 ```
 
-Easy-Prime also provides a dash application.  [NOT WORKING]
+Easy-Prime also provides a dash application. 
 
 Please have dash installed before running the dash application.
 
@@ -63,6 +63,60 @@ python main.py
 ```
 
 ![screenshot](screenshot.png)
+
+# Easy-Prime on AWS
+
+Please use this URL for now: http://easy-prime-test-dev.us-west-2.elasticbeanstalk.com/
+
+We will deploy it to St. Jude once we get approved from the IT department.
+
+# Tutorial
+
+## Input
+
+1. vcf input example
+
+VCF headers will be ignored. Only the first 5 columns from the vcf file will be used; they are: chr, pos, name/id, ref, alt.
+
+```
+## comment line, will be ignored
+chr9	110184636	FIG5G_HEK293T_HEK3_6XHIS	G	GCACCATCATCACCATCAT
+chr1	185056772	FIG5E_U2OS_RNF2_1CG	G	C
+chr1	173878832	rs5878	T	C
+chr11	22647331	FIG3C_FANCF_7AC_PE3B	T	G
+chr19	10244324	EDFIG5B_DNMT1_dPAM	G	T
+
+```
+
+2. fasta input example
+
+To specify reference and alternative allele, you need two fasta sequences; `_ref` is a keyword that will be recognized as the reference allele and `_alt` is a keyword for target mutations.
+
+```
+>test_ref
+AAAAAAAAAAAAAAAAAAAAAAAAAGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+>test_alt
+AAAAAAAAAAAAAAAAAAAAAAAAAGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+
+```
+
+## Parameters
+
+Genome: only support hg19 for now. 
+
+## Results
+
+The web output contain two parts:
+
+1. Sequence visualization
+
+By default, the top prediction will be shown automatically. Users can input the sample ID (in the table below) to plot specific prediction.
+
+2. pegRNA table
+
+In this result table, each predicted sgRNA/ngRNA/RTT/PBS configuration will be provided in 4 rows, they will have the same sample ID and predicted efficiency.
+
+
 
 # Input
 
