@@ -154,9 +154,14 @@ class target_mutation:
 			extend = gRNA_search_space*(i+1)
 			if i >=1:
 				print ("No sgRNA were found using %s gRNA_search_space"%(extend))
-			start = self.mutation_pos-extend
+			## modified for fasta input
+			start = max(self.mutation_pos-extend,0)
 			end = self.mutation_pos+extend
-			search_fa = sub_fasta_single(self.target_fa,self.target_pos, start,end)
+			if len(self.target_fa) <= extend*2:
+				search_fa = self.target_fa
+				start = 0
+			else:
+				search_fa = sub_fasta_single(self.target_fa,self.target_pos, start,end)
 			df = run_pam_finder(search_fa,"N"*sgRNA_length,self.PAM,start,self.chr)
 			## this above df contains all sgRNAs
 			self.N_sgRNA_found = df.shape[0]

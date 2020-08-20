@@ -186,11 +186,17 @@ class sgRNA:
 		self.RTT_df.columns = ['chr','start','end','target_to_RTT5']
 		self.RTT_df["strand"] = get_opposite_strand(self.strand)
 		self.RTT_df.index = ["%s_RTT_%s"%(self.uid,i) for i in range(self.RTT_df.shape[0])]
+		if debug>10:
+			print (self.target_fa)
+			print (self.user_target_pos)
 		temp = get_fasta_simple(self.target_fa,self.RTT_df, self.user_target_pos)
 		self.RTT_df['old_seq'] = temp[3].tolist()
 	
 		## add variant
 		# relative_pos = self.target_pos-r['start']-1 # start is 0-index
+		if debug>10:
+			pd.set_option('display.max_columns', None)
+			print (self.RTT_df)
 		self.RTT_df['seq'] = [self.add_variant(r['old_seq'],self.target_pos-r['start']-1,self.ref,self.alt) for i,r in self.RTT_df.iterrows()]
 		self.RTT_df = self.RTT_df[self.RTT_df['seq']!=0]
 		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
@@ -229,6 +235,7 @@ class sgRNA:
 
 		
 		## make features
+		## modify it to fit fasta input
 		attached_minimal_PBS = sub_fasta_single(self.target_fa,self.user_target_pos, pbs_start,pbs_end)
 		if self.strand == "+": ## when sgRNA is positive strand, RTT should use the negative strand
 			attached_minimal_PBS = revcomp(attached_minimal_PBS)

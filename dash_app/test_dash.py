@@ -64,12 +64,12 @@ app.layout = html.Div(
 					id="vis_top_pegRNA",
 					style={"background-color":"#FFFFFF","margin-top":"20px",'font-weight':'bold','font-size':'20px'},
 					children=[
-						html.Div(style={"vertical-align": "middle","display": "inline-block"},children=[
+						html.Div(children=[
 							'PE design visualization for:',
 							dcc.Input(
 								id = 'select_pegRNA_id',
 								value = '',
-								debounce=True,
+								style = {"width":"500px"}
 							)
 						]),
 						html.Div([html.Img(id='PE_design_figure')]),		
@@ -84,13 +84,40 @@ app.layout = html.Div(
 				dash_table.DataTable(
 					id='pegRNA-table',
 					columns=[
-						{'name': i, 'id': i, 'deletable': False} for i in ['sample_ID','type','seq','chr','start','end','strand']
+						{'name': i, 'id': i, 'deletable': False} for i in ['sample_ID','type','seq','chr','start','end','strand','predicted efficiency']
 					],
 					style_cell={
 						'minWidth': '0px', 'maxWidth': '20px',
-						'width':'10%',
-						'whiteSpace': 'normal'
-					},			
+						# 'width':'12%',
+						'whiteSpace': 'normal',
+						'height': 'auto',
+						# 'whiteSpace': 'normal',
+						# 'text-overflow': 'ellipsis',
+					},	
+					style_data={
+						'whiteSpace': 'normal',
+						'height': 'auto',
+					},	
+					style_cell_conditional=[
+						{'if': {'column_id': 'type'},
+						 'width': '7%'},
+						{'if': {'column_id': 'strand'},
+						 'width': '7%'},
+						{'if': {'column_id': 'start'},
+						 'width': '10%'},
+						{'if': {'column_id': 'end'},
+						 'width': '10%'},
+						{'if': {'column_id': 'chr'},
+						 'width': '10%'},
+						{'if': {'column_id': 'predicted efficiency'},
+						 'width': '10%'},
+					],
+					style_header={
+						'text-align':'center',
+						'font-weight': 'bold',
+
+
+					},						
 					editable=True,
 					filter_action="native",
 					page_action="native",
@@ -146,18 +173,17 @@ def search_pegRNA(n_clicks,pbs_value,rtt_value,ngRNA_value,genome,input_variants
 
 
 	jid=str(uuid.uuid4()).split("-")[-1]
-	input_variants = StringIO(input_variants)
+	# input_variants = StringIO(input_variants)
 	parameters['min_PBS_length'] = pbs_value[0]
 	parameters['max_PBS_length'] = pbs_value[1]
 	parameters['min_RTT_length'] = rtt_value[0]
 	parameters['max_RTT_length'] = rtt_value[1]
 	parameters['max_ngRNA_distance'] = ngRNA_value
 	summary,df_top,df_all,X_p = easy_prime_main(input_variants,jid,parameters)
-
+	df_top['predicted_efficiency'] = ["{0:.2f}%".format(x * 100) for x in df_top['predicted_efficiency']]
+	df_top=df_top.rename(columns = {'predicted_efficiency':'predicted efficiency'})
 	## initiate data table
-
-
-
+	
 	return [jid,df_top.to_dict('records')]
 
 
@@ -177,9 +203,9 @@ def update_vis_pegRNA(jid,select_pegRNA_id):
 	users can change visualization by searching different
 	
 	"""
-	print ("my values")
-	print ("jid is ",jid)
-	print ("select_pegRNA_id is ",select_pegRNA_id)
+	# print ("my values")
+	# print ("jid is ",jid)
+	# print ("select_pegRNA_id is ",select_pegRNA_id)
 	if jid == None:
 		print ("jid is ",jid)
 		return init_fig()
@@ -198,7 +224,12 @@ def update_vis_pegRNA(jid,select_pegRNA_id):
 	df_all.loc[select_pegRNA_id].to_csv("results/%s"%(tmp_df_name))
 
 	# img = vis_pegRNA(,parameters['genome_fasta'])
-	img = vis_pegRNA("results/%s"%(tmp_df_name),genome_fasta=parameters['genome_fasta'],out_file_name=tmp_df_name)
+	file_name = "results/%s.fa"%(jid)
+	if os.path.isfile(file_name):
+		genome_fasta = file_name
+	else:
+		genome_fasta = parameters['genome_fasta']
+	img = vis_pegRNA("results/%s"%(tmp_df_name),genome_fasta=genome_fasta,out_file_name=tmp_df_name)
 	return img
 
 ## download data table (need jid)

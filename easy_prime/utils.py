@@ -16,7 +16,7 @@ from skbio import DNA
 import RNA
 from copy import deepcopy as dp
 import numpy as np
-
+import sys
 #------------------ FILE IO ---------------------------
 
 def write_file(file_name,message):
@@ -51,7 +51,7 @@ def get_parameters(config):
 	pre_defined_list["n_jobs"] = -1
 	pre_defined_list["scaffold"] = "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"
 	pre_defined_list["debug"] = 0
-	pre_defined_list["extend_length"] = 1000
+	pre_defined_list["extend_length"] = 1000 # extracting +- 1000bp center at target pos from the genome, in 99.9% cases, you don't need to change this. If change to less than 500, will trigger fasta input mode, may cause error.
 	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.py"
 	
 	#------------ PBS -----------
@@ -125,6 +125,107 @@ def run_pam_finder(target_fa,seq,PAM,abs_start_pos,chr):
 
 
 #------------------ Fasta Operators ---------------------------
+from Bio import SeqIO
+
+def find_pos_ref_alt(x,y):
+	"""find variant pos, ref and alt given ref(x) and alt(y) sequences
+
+	Method
+
+	trim 5 end, then trim 3 end, what left is the ref and alt, pos the trim 5 position
+
+	"""
+
+	for i in range(len(x)):
+		if x[i]!=y[i]:
+			new_x = x[i:]
+			new_y = y[i:]
+			pos = i+1
+			break
+	# print (new_x,new_y)
+	for i in range(min(len(new_x),len(new_y))):
+		i=i+1
+		# print ("second for",i,new_x[-i],new_y[-i])
+		if new_x[-i]!=new_y[-i]:
+			ref = new_x[:-i+1]
+			alt = new_y[:-i+1]
+			break
+		else:
+
+			ref = new_x[:-i]
+			alt = new_y[:-i]
+			
+	## check
+	check_y = x[:pos-1]+alt+x[pos+len(ref)-1:]
+	# print ("debug",pos,i,ref)
+	# print ("new y",x[:pos-1],x[pos+len(ref)-1:],alt)
+	if y!= check_y:
+		print ("something is wrong, please fix it")
+		print (x)
+		print (y)
+		return -1,ref,alt
+	return pos,ref,alt
+
+def fasta2vcf(f):
+	"""convert fasta to vcf dataframe
+
+	Input
+	-----
+
+	Fasta file, _ref is recognized as ref and _alt is used as alt, these are two keywords
+
+	Output
+	------
+
+	vcf dataframe: chr, pos, name, ref, alt, reference sequence
+
+
+	"""
+	my_dict = {}
+	for r in SeqIO.parse(f, "fasta"):
+		my_dict[r.id] = str(r.seq).upper()
+	print (my_dict)
+	vcf = pd.DataFrame()
+	index_list = []
+	chr_list = []
+	pos_list = []
+	ref_list = []
+	alt_list = []
+	seq_list = []
+	for k in my_dict:
+		if not "_ref" in k:
+			continue
+		name = k.replace("_ref","")
+		if not name+"_alt" in my_dict:
+			print (k,"alt sequence not found. Please use _ref and _alt keywords. Skip...")
+			continue
+		ref_seq,alt_seq = my_dict[k],my_dict[name+"_alt"]
+		if len(ref_seq) < 30:
+			print (k,"Please input sequence length at least 30bp. Skip...")
+			continue
+		if ref_seq == alt_seq:
+			print (k,"Ref and Alt sequence is the same. Please check. Skip...")
+			continue
+		pos,ref,alt = find_pos_ref_alt(ref_seq,alt_seq)
+		index_list.append(name)
+		chr_list.append(k)
+		seq_list.append(ref_seq)
+		pos_list.append(pos)
+		ref_list.append(ref)
+		alt_list.append(alt)
+	vcf[0] = chr_list
+	vcf[1] = pos_list
+	vcf[2] = index_list
+	vcf[3] = ref_list
+	vcf[4] = alt_list
+	vcf[5] = seq_list
+	vcf = vcf[vcf[1]!=-1]
+	if vcf.shape[0] == 0:
+		print ("no valid sequences in:",f)
+		print ("Exit...")
+		sys.exit(1)
+
+	return vcf	
 
 def vcf2fasta(vcf,extend_length=None,genome_fasta=None,**kwargs):
 	"""extracting +- extend_length given vcf target mutation
@@ -181,6 +282,9 @@ def sub_fasta_single(target_fa,target_pos, abs_start,abs_end):
 	start =  N-(target_pos-abs_start)
 	end = abs_end - abs_start + start
 	seq = target_fa[start:end]
+	if len(target_fa)<1000:
+		## user input fasta:
+		seq = target_fa[abs_start:abs_end]
 	return seq
 
 
@@ -202,6 +306,17 @@ def get_fasta_simple(target_fa,df, target_pos,strand=False):
 	N = int(len(target_fa)/2)
 	temp.columns = list(range(len(df.columns)))
 	temp.index = temp[0]+":"+temp[1].astype(str)+"-"+temp[2].astype(str)
+	if len(target_fa)<1000:
+		## user input fasta:
+		seq_list = []
+		for r in temp.values.tolist():
+			seq = target_fa[r[1]:r[2]]
+			if strand:
+				if r[5] == "-":
+					seq = revcomp(seq)
+			seq_list.append(seq)
+		temp[3] = seq_list	
+		return temp	
 	temp[2] = temp[2]-temp[1]
 	temp[1] = N-(target_pos-temp[1])
 	temp[2] = temp[2]+temp[1]

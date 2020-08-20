@@ -242,16 +242,19 @@ input[type="tel"],
 input[type="url"],
 input[type="password"],
 textarea,
+/* The 6px vertically centers text on FF, ignored by Webkit */
 select {
   height: 38px;
-  padding: 6px 10px; /* The 6px vertically centers text on FF, ignored by Webkit */
+  padding: 6px 10px; 
   background-color: #fff;
   border: 1px solid #D1D1D1;
   border-radius: 4px;
   box-shadow: none;
   box-sizing: border-box;
   font-family: inherit;
-  font-size: inherit; /*https://stackoverflow.com/questions/6080413/why-doesnt-input-inherit-the-font-from-body*/}
+  font-size: inherit; 
+}
+/*https://stackoverflow.com/questions/6080413/why-doesnt-input-inherit-the-font-from-body*/
 /* Removes awkward default styles on some inputs for iOS */
 input[type="email"],
 input[type="number"],
@@ -271,7 +274,7 @@ textarea {
 input[type="email"]:focus,
 input[type="number"]:focus,
 input[type="search"]:focus,
-input[type="text"]:focus,
+/*input[type="text"]:focus,*/
 input[type="tel"]:focus,
 input[type="url"]:focus,
 input[type="password"]:focus,

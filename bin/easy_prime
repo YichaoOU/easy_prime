@@ -25,7 +25,7 @@ def my_args():
 	mainParser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,description="easy_prime for pegRNA design")
 	username = getpass.getuser()
 	
-	mainParser.add_argument('-f','--vcf_file',  help="input target mutations to look for pegRNAs",required=True)
+	mainParser.add_argument('-f','--input_file',  help="vcf or fasta",required=True)
 	mainParser.add_argument('-c','--config',  help="A YAML file specifying parameters",default=None)
 	mainParser.add_argument('-v','--version', action='version', version='Easy-Prime version: %s'%(easy_prime.__version__))
 	mainParser.add_argument('-o','--output',  help="output dir",default="easy_prime_%s_%s_result_dir"%(username,str(datetime.date.today())))
@@ -47,25 +47,36 @@ def main():
 	args = my_args()
 	
 	## get parameters
-	from easy_prime.utils import get_parameters, print_parameters,vcf2fasta
+	from easy_prime.utils import get_parameters, print_parameters,vcf2fasta,fasta2vcf
 	parameters = get_parameters(args.config)
 	print_parameters(parameters)
 
 	## get a list of targets
 	from easy_prime import target_mutation
 	import pandas as pd
-	## read vcf
-	vcf = pd.read_csv(args.vcf_file,comment="#",sep="\t",header=None)
-	vcf[1] = vcf[1].astype(int)
-	vcf =vcf.drop_duplicates(2) # remove duplicated names
-	vcf[3] = [x.upper() for x in vcf[3]]
-	vcf[4] = [x.upper() for x in vcf[4]]
-	vcf[5] = vcf2fasta(vcf,**parameters)
-	vcf = vcf[list(range(6))]
+	## ## modified for fasta input
+	try:
+		vcf = pd.read_csv(args.input_file,comment="#",sep="\t",header=None)
+		vcf[1] = vcf[1].astype(int)
+		vcf =vcf.drop_duplicates(2) # remove duplicated names
+		vcf[3] = [x.upper() for x in vcf[3]]
+		vcf[4] = [x.upper() for x in vcf[4]]
+		vcf[5] = vcf2fasta(vcf,**parameters)
+		vcf = vcf[list(range(6))]
+		
+		## for each target, create target mutation class
+		
+	except:
+		try:
+			print ("Reading fasta file: %s"%(args.input_file))
+			vcf = fasta2vcf(args.input_file)
+			print (vcf)
+		except:
+			print ("Can't read %s as vcf or fasta. Please check input. Exit..."%(args.input_file))
+			exit()
 
-	## for each target, create target mutation class
-	my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]
-
+	variant_list = vcf[2].tolist()
+	my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]	
 	## find best pegRNAs
 	from joblib import Parallel, delayed
 	# df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=10,prefer="threads")(delayed(run_steps)(t,**parameters) for t in my_targets)
@@ -76,12 +87,12 @@ def main():
 	subprocess.call("mkdir -p %s"%(args.output),shell=True)
 	summary = pd.DataFrame([x[3:8] for x in df_list]).astype(int)
 	summary.columns = ['found_PE3b','found_PE3','found_dPAM','found_PE2',"N_sgRNA_found"]
-	summary.index = [r[2] for i,r in vcf.iterrows()]
+	summary.index = variant_list
 	summary.to_csv("%s/summary.csv"%(args.output),index=True)
 	
 	df_top = pd.concat([x[0] for x in df_list])
 	if df_top.shape[0]==0:
-		print ("no pegRNA (including PE2) were found for the input file: %s"%(args.vcf_file))
+		print ("no pegRNA were found for the input file: %s"%(args.input_file))
 		sys.exit()
 	df_top = df_top.sort_values("predicted_efficiency",ascending=False)
 	df_top.to_csv("%s/topX_pegRNAs.csv"%(args.output),index=False)

@@ -8,6 +8,7 @@ import dash_table
 # import plotly_express as px
 from dash.dependencies import Input, Output, State
 import re
+import os
 import numpy as np
 from sklearn.cluster import KMeans
 import plotly.figure_factory as ff
@@ -18,13 +19,14 @@ from datetime import datetime as dt
 import pathlib
 import easy_prime
 import io
-from easy_prime.utils import get_parameters, print_parameters,vcf2fasta
+from easy_prime.utils import get_parameters, print_parameters,vcf2fasta,fasta2vcf
 from easy_prime import target_mutation
 import subprocess
 from joblib import Parallel, delayed
 import urllib
 from io import StringIO
 import uuid
+from Bio import SeqIO
 
 import pandas as pd
 import uuid
@@ -142,7 +144,17 @@ def vis_pegRNA2(df,genome_fasta=None,**kwargs):
 
 
 #--------------------------------- easy prime search ---------------------------
-
+def write_fasta(file_name,myDict):
+	out = open(file_name,"wt")
+	for k in myDict:
+		out.write(">"+k+"\n")
+		out.write(myDict[k]+"\n")
+	out.close()
+def read_fasta(f):
+	my_dict = {}
+	for r in SeqIO.parse(f, "fasta"):
+		my_dict[r.id] = str(r.seq).upper()
+	return my_dict	
 def run_steps(t,**kwargs):
 
 	t.init(**kwargs)
@@ -156,16 +168,51 @@ def easy_prime_main(input_data,jid,parameters):
 	
 	## read vcf
 	print (f"jid: {jid}")
-	vcf = pd.read_csv(input_data,comment="#",sep="\t",header=None)
-	vcf[1] = vcf[1].astype(int)
-	vcf =vcf.drop_duplicates(2) # remove duplicated names
-	vcf[3] = [x.upper() for x in vcf[3]]
-	vcf[4] = [x.upper() for x in vcf[4]]
-	vcf[5] = vcf2fasta(vcf,**parameters)
-	vcf = vcf[list(range(6))]
+	# vcf = pd.read_csv(input_data,comment="#",sep="\t",header=None)
+	# vcf[1] = vcf[1].astype(int)
+	# vcf =vcf.drop_duplicates(2) # remove duplicated names
+	# vcf[3] = [x.upper() for x in vcf[3]]
+	# vcf[4] = [x.upper() for x in vcf[4]]
+	# vcf[5] = vcf2fasta(vcf,**parameters)
+	# vcf = vcf[list(range(6))]
+
+
+	## get a list of targets
+	# from easy_prime import target_mutation
+	# import pandas as pd
+	## ## modified for fasta input
+	try:
+		vcf = pd.read_csv(StringIO(input_data),comment="#",sep="\t",header=None)
+		vcf[1] = vcf[1].astype(int)
+		vcf =vcf.drop_duplicates(2) # remove duplicated names
+		vcf[3] = [x.upper() for x in vcf[3]]
+		vcf[4] = [x.upper() for x in vcf[4]]
+		vcf[5] = vcf2fasta(vcf,**parameters)
+		vcf = vcf[list(range(6))]
+		
+		## for each target, create target mutation class
+		
+	except:
+		try:
+			# print (input_data)
+			# print ("Reading fasta file: %s"%(input_data))
+			
+			# print (list(SeqIO.parse(StringIO(input_data),"fasta")))
+			file_name = "results/%s.fa"%(jid)
+			myDict = read_fasta(StringIO(input_data))
+			write_fasta(file_name,myDict)
+			vcf = fasta2vcf(file_name)
+			print (vcf)
+		except Exception as e:
+			print (e)
+			# print ("Can't read %s as vcf or fasta. Please check input. Exit..."%(input_data))
+			exit()
+
+	variant_list = vcf[2].tolist()
+	my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]	
 
 	## for each target, create target mutation class
-	my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]
+	# my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]
 	print (vcf)
 	## find best pegRNAs
 	df_list = [run_steps(t,**parameters) for t in my_targets]
@@ -173,7 +220,7 @@ def easy_prime_main(input_data,jid,parameters):
 
 	summary = pd.DataFrame([x[3:8] for x in df_list]).astype(int)
 	summary.columns = ['found_PE3b','found_PE3','found_dPAM','found_PE2',"N_sgRNA_found"]
-	summary.index = [r[2] for i,r in vcf.iterrows()]
+	summary.index = variant_list
 	summary.to_csv("results/%s_summary.csv"%(jid),index=True)
 	
 	df_top = pd.concat([x[0] for x in df_list])
@@ -202,7 +249,7 @@ def init_fig():
 	return "data:image/png;base64,%s"%(img_string.decode("utf-8"))
 
 def encode_fig(pegRNA_id=None):
-	print ("#######????????????#######",pegRNA_id)
+	# print ("#######????????????#######",pegRNA_id)
 	fig = "img/rs737092_chr20_55990370_55990390_TACCTCCTGGGCCTCCCGCA_candidate_162.top_pegRNA.png"
 	with open(fig, "rb") as image_file:
 		img_string = base64.b64encode(image_file.read())
@@ -376,8 +423,8 @@ def welcome():
 def variant_input():
 	variants = dcc.Textarea(
 		id='variants',
-		value='VCF format\nThe first 5 columns: chr, id, pos, ref, alt\n #comment line will be ignored',
-		style={'width': '100%', 'height': 100,'padding':"0 0 0 0","font-size":"13px"},
+		value='VCF format\nThe first 5 columns: chr, id, pos, ref, alt\n #comment line will be ignored\n FASTA format\nUse _ref to represent reference allele and _alt for alternative allele.\n>test_ref\nXXXXXXX\n>test_alt\nXXXXAXXXX',
+		style={'width': '100%', 'height': 150,'padding':"0 0 0 0","font-size":"13px"},
 	)
 	return html.Div(
 		id="variant_input",

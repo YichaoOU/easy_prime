@@ -37,8 +37,9 @@ def my_args():
 	username = getpass.getuser()
 	
 	mainParser.add_argument('-f','--rawX',  help="input rawX format, last column with predicted efficiency",required=True)
-	mainParser.add_argument('-s','--genome_fasta',  help="A YAML file specifying parameters",required=True)
+	mainParser.add_argument('-s','--genome_fasta',  help="input genome sequences",required=True)
 	mainParser.add_argument('-t','--figure_type',  help="png or pdf",default="png")
+	mainParser.add_argument('--sample_id',  help="only plot this sample id",default=None)
 	mainParser.add_argument('--output_file_name',  help="use only when plot one pegRNA, output_file_name.figure_type, will overwrite -t -o options.",default=None)
 	mainParser.add_argument('-o','--output',  help="output dir",default="easy_prime_vis_%s_%s"%(username,str(datetime.date.today())))
 	
@@ -95,6 +96,7 @@ def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_nam
 	start = df['start'].min()
 	start -= start%10
 	start -= 1
+	start = max(start,0)
 	end = df['end'].max()
 	end -= end%10
 	end += 10
@@ -160,6 +162,9 @@ def main():
 	df = pd.read_csv(args.rawX,index_col=0)
 	subprocess.call(f"mkdir -p {args.output}",shell=True)
 	for i in df.index.unique().tolist():
+		if args.sample_id != None:
+			if i != args.sample_id:
+				continue
 		print (f"Processing {i}...")
 		plot_main(df.loc[i],**vars(args))
 
