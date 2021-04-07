@@ -322,13 +322,11 @@ class target_mutation:
 		
 		self.X_p = self.X_p.sort_values("predicted_efficiency",ascending=False)
 		self.rawX = self.rawX.sort_values("predicted_efficiency",ascending=False)
-		if self.found_dPAM: # choose dPAM sequence when possible
-			for i in self.rawX.index:
-				if "dPAM" in i:
-					self.topX = self.rawX.loc[i]
-					break
-		else:
-			self.topX = self.rawX.loc[self.rawX.index[0]]
+		tmp = self.rawX.copy()
+		tmp['rank'] = tmp.index.str.contains("PE3b").astype(int)+tmp.index.str.contains("dPAM").astype(int)
+		tmp = tmp.sort_values(['rank','predicted_efficiency'],ascending=False)
+		tmp = tmp.drop(['rank'],axis=1)
+		self.topX = tmp.loc[tmp.index[0]]
 		
 	
 

@@ -2,3 +2,4 @@ build/
 dist/
 easy_prime.egg-info/
 __pycache__/
+test/

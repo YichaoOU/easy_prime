@@ -150,22 +150,23 @@ class sgRNA:
 			large_deletion_flag = True
 			max_RTT_length = max_RTT_length+len(self.ref)
 		# target_to_RTT5_feature=[]
+		deletion_length = len(self.ref)-len(self.alt)
 		if self.strand=="+":
 			start = self.cut_position # remember out cut position, the actual nucleotide, we use -4
 			pbs_end = start
 			pbs_start = pbs_end - 14 
-			for l in range(min_RTT_length,max_RTT_length+1):
+			for l in range(min_RTT_length,max_RTT_length+1+max(0,deletion_length)):
 				end = start+l
 				if start+1<=self.target_pos <=end-min_distance_RTT5:
-					out.append([chr,start,end,end-self.target_pos])
+					out.append([chr,start,end,end-self.target_pos-max(0,deletion_length)])
 		if self.strand=="-":
 			end = self.cut_position - 1
 			pbs_start = end
 			pbs_end = pbs_start + 14 
-			for l in range(min_RTT_length,max_RTT_length+1):
+			for l in range(min_RTT_length,max_RTT_length+1+max(0,deletion_length)):
 				start = end-l
 				if end>=self.target_pos >=start+1+min_distance_RTT5:
-					out.append([chr,start,end,self.target_pos-start-1])	
+					out.append([chr,start,end,self.target_pos-start-1-max(0,deletion_length)])	
 					
 		current_max_RTT_length = max_RTT_length+5
 		while len(out) == 0:
