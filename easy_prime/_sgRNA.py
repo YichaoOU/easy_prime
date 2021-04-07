@@ -390,6 +390,7 @@ class sgRNA:
 			self.ngRNA_df['sgRNA_distance_to_ngRNA'] = [-self.dist_dict[x][self.sgRNA_name] for x in self.ngRNA_df["sgRNA_name"]]
 		if self.strand == "+":
 			self.ngRNA_df['sgRNA_distance_to_ngRNA'] = [self.dist_dict[x][self.sgRNA_name] for x in self.ngRNA_df['sgRNA_name']]
+		# print (max_ngRNA_distance,"max_ngRNA_distance")
 		current_ngRNA_df = self.ngRNA_df[self.ngRNA_df['sgRNA_distance_to_ngRNA'].abs()<=max_ngRNA_distance]
 		current_max_ngRNA_distance = max_ngRNA_distance + 20
 		while current_ngRNA_df.shape[0] == 0:
@@ -402,7 +403,7 @@ class sgRNA:
 				print ("max ngRNA distance increased from %s to %s:"%(max_ngRNA_distance,current_max_ngRNA_distance))
 				break
 			current_max_ngRNA_distance += 20
-
+		self.ngRNA_df = current_ngRNA_df
 		if self.ngRNA_df.shape[0] == 0:
 			print ("no ngRNA for max distance: %s"%(max_ngRNA_distance))
 			self.no_ngRNA = True
