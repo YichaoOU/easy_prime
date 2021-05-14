@@ -5,8 +5,9 @@ Easy-Prime: *Machine learning based pegRNA design*
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: 
    
+			index
    Installation
 
 Ask questions here
