@@ -3,11 +3,11 @@ from .utils import *
 # from utils import *
 	
 class sgRNA:
-	def __init__(self,chr=None,start=None,end=None,seq=None,sgRNA_name=None,strand=None,cut_position=None,mutation_pos = None,mutation_ref = None,mutation_alt = None,variant_id=None,dist_dict=None,opposite_strand_sgRNAs=None,all_sgRNA_df=None,target_fa=None,scaffold_seq=None,user_target_pos=None,user_ref=None,user_alt=None,offset=None,target_to_sgRNA=None,PAM=None,**kwargs):
+	def __init__(self,chr=None,start=None,end=None,seq=None,sgRNA_name=None,strand=None,cut_position=None,mutation_pos = None,mutation_ref = None,mutation_alt = None,variant_id=None,dist_dict=None,opposite_strand_sgRNAs=None,all_sgRNA_df=None,target_fa=None,scaffold_seq=None,user_target_pos=None,user_ref=None,user_alt=None,offset=None,target_to_sgRNA=None,PAM=None,DeepSpCas9=None,**kwargs):
 	
 		"""
 		
-		search key is chr_start_end_seq because seq can be duplicated, this is unique
+		search key is chr_start_end_seq because seq can be duplicated, this chr_start_end_seq is unique. This name doesn't show strand, but seq is alwasy 5-3 direction
 		
 		
 		Searching steps
@@ -40,6 +40,7 @@ class sgRNA:
 		self.seq = seq
 		self.variant_id = variant_id
 		self.target_to_sgRNA = target_to_sgRNA
+		self.DeepSpCas9 = DeepSpCas9
 		self.is_dPAM = 0
 		self.PAM = PAM
 		self.offset = offset
@@ -521,6 +522,8 @@ class sgRNA:
 			if self.is_dPAM:
 				current_index+="_dPAM"	
 				# print (self.sgRNA_name,"dPAM")		
+			if self.no_ngRNA:
+				current_index+="_PE2"	
 			X_index.append(current_index)
 			
 			
@@ -559,4 +562,5 @@ class sgRNA:
 		self.X.index = X_index	
 		self.X['is_dPAM'] = self.is_dPAM
 		self.X['target_to_sgRNA'] = self.target_to_sgRNA
+		self.X['DeepSpCas9'] = self.DeepSpCas9
 

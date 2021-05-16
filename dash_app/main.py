@@ -5,18 +5,49 @@ import imp
 imp.reload(utils)
 from utils import *
 server = Flask(__name__)
+external_scripts =['https://proteinpaint.stjude.org/bin/proteinpaint.js']
 app = dash.Dash(
 	__name__,
 	meta_tags=[{"name": "viewport", "content": "width=800px, initial-scale=1"}],
 	server=server,
+	serve_locally=True,
+	external_scripts=external_scripts,
 )
 
 # server = app.server
 app.config.suppress_callback_exceptions = True
+# app.scripts.append_script({"external_url": ['https://code.jquery.com/jquery-3.2.1.min.js',]})
 @server.route("/results/<path:path>")
 def download(path):
     """Serve a file from the upload directory."""
     return send_from_directory("results", path, as_attachment=True)
+
+
+# app.renderer = '''
+# runproteinpaint({
+        # host:'https://proteinpaint.stjude.org',
+        # holder:document.getElementById('PE_vis'),
+        # parseurl:true,
+        # block:true,
+        # nobox:1,
+        # noheader:1,
+        # genome:'hg19',
+        # position:'chr12:25334648-25426944',
+        # nativetracks:'RefGene',
+        # tracks:[   
+                # {
+                        # "type":"bigwig",
+                        # "url":"http://hgdownload.soe.ucsc.edu/goldenPath/hg19/phyloP100way/hg19.100way.phyloP100way.bw",
+                        # // alternatively, load from a local file on the ProteinPaint server
+                        # //"file":"hg19/hg19.100way.phastCons.bw",
+                        # "name":"UCSC phyloP 100ways",
+                        # "height":100
+                # },
+        # ]
+# })
+
+# '''
+
 
 
 app.layout = html.Div(
@@ -73,7 +104,7 @@ app.layout = html.Div(
 								style = {"width":"500px"}
 							)
 						]),
-						html.Div([html.Img(id='PE_design_figure')]),		
+						html.Div(id="PE_vis",children=[html.Img(id='PE_design_figure')]),		
 
 					],
 				),
@@ -263,5 +294,5 @@ def download_topX(jid):
 	return csv_string
 '''
 
-if __name__ == '__main__':
-	app.run_server(debug=False,host='0.0.0.0',port=8051)
+# if __name__ == '__main__':
+app.run_server(debug=False,host='0.0.0.0',port=9866)

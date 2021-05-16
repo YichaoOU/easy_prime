@@ -46,12 +46,12 @@ def main():
 
 	args = my_args()
 	
-	## get parameters
+	# ------------------------- get parameters ----------------------------------------------
 	from easy_prime.utils import get_parameters, print_parameters,vcf2fasta,fasta2vcf
 	parameters = get_parameters(args.config)
 	print_parameters(parameters)
 
-	## get a list of targets
+	# ------------------------- get variant input ----------------------------------------------
 	from easy_prime import target_mutation
 	import pandas as pd
 	## ## modified for fasta input
@@ -77,13 +77,20 @@ def main():
 
 	variant_list = vcf[2].tolist()
 	my_targets = [target_mutation(*r) for i,r in vcf.iterrows()]	
-	## find best pegRNAs
-	from joblib import Parallel, delayed
-	# df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=10,prefer="threads")(delayed(run_steps)(t,**parameters) for t in my_targets)
-	df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=10)(delayed(run_steps)(t,**parameters) for t in my_targets)
-	# df_list = [run_steps(t,**parameters) for t in my_targets]
+	
+	# ------------------------- find best pegRNAs ----------------------------------------------
+	# backend can affect this parallization, if so, user show use n_jobs=1
+	if parameters['n_jobs'] == 1:
+		df_list = [run_steps(t,**parameters) for t in my_targets]
+	else:
+		from joblib import Parallel, delayed
+		df_list = Parallel(n_jobs=parameters['n_jobs'],verbose=10)(delayed(run_steps)(t,**parameters) for t in my_targets)
+
+	
+	
+	# ------------------------- save output ----------------------------------------------
+	# TODO, possibly updating the format to be more user-friendly
 	import subprocess
-	## save output
 	subprocess.call("mkdir -p %s"%(args.output),shell=True)
 	summary = pd.DataFrame([x[3:8] for x in df_list]).astype(int)
 	summary.columns = ['found_PE3b','found_PE3','found_dPAM','found_PE2',"N_sgRNA_found"]

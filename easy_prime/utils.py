@@ -6,6 +6,8 @@ import shutil
 import datetime
 import getpass
 import uuid
+import mechanize
+import re
 import pandas as pd
 import yaml
 import itertools
@@ -26,7 +28,7 @@ def write_file(file_name,message):
 	
 def print_parameters(myDict):
 	myGroup = {}
-	myGroup['Easy-Prime'] = ['genome_fasta','scaffold','n_jobs','debug','ML_model','extend_length']
+	myGroup['Easy-Prime'] = ['genome_fasta','scaffold','n_jobs','debug','PE2_model','PE3_model','extend_length']
 	myGroup['PBS searching'] = ['min_PBS_length','max_PBS_length']
 	myGroup['RTT searching'] = ['min_RTT_length','max_RTT_length','min_distance_RTT5','max_max_RTT_length']
 	myGroup['sgRNA searching'] = ['gRNA_search_space','sgRNA_length','offset','PAM','max_target_to_sgRNA','max_max_target_to_sgRNA']
@@ -52,7 +54,8 @@ def get_parameters(config):
 	pre_defined_list["scaffold"] = "GTTTTAGAGCTAGAAATAGCAAGTTAAAATAAGGCTAGTCCGTTATCAACTTGAAAAAGTGGCACCGAGTCGGTGC"
 	pre_defined_list["debug"] = 0
 	pre_defined_list["extend_length"] = 1000 # extracting +- 1000bp center at target pos from the genome, in 99.9% cases, you don't need to change this. If change to less than 500, will trigger fasta input mode, may cause error.
-	pre_defined_list["ML_model"] = p_dir+"../model/xgb_model_final.py"
+	pre_defined_list["PE2_model"] = p_dir+"../model/PE2_model_final.py"
+	pre_defined_list["PE3_model"] = p_dir+"../model/PE3_model_final.py"
 	
 	#------------ PBS -----------
 	pre_defined_list["min_PBS_length"] = 10
@@ -117,10 +120,12 @@ def run_pam_finder(target_fa,seq,PAM,abs_start_pos,chr):
 	out = []
 	if len(fwd_search) > 1:
 		for s in fwd_search[1:]:
-			out.append([chr,s+abs_start_pos,s+abs_start_pos+len(seq),target_fa[s:(s+len(seq))],".","+"])
+			# out.append([chr,s+abs_start_pos,s+abs_start_pos+len(seq),target_fa[s:(s+len(seq))],".","+"])
+			out.append([chr,s+abs_start_pos,s+abs_start_pos+len(seq),target_fa[s:(s+len(seq))],target_fa[s:(s+len(seq)+len(PAM))],"+"])
 	if len(rev_search) > 1:
 		for s in rev_search[1:]:
-			out.append([chr,(len(target_fa)-s)+abs_start_pos-len(seq),(len(target_fa)-s)+abs_start_pos,rev_seq[s:(s+len(seq))],".","-"])
+			# out.append([chr,(len(target_fa)-s)+abs_start_pos-len(seq),(len(target_fa)-s)+abs_start_pos,rev_seq[s:(s+len(seq))],".","-"])
+			out.append([chr,(len(target_fa)-s)+abs_start_pos-len(seq),(len(target_fa)-s)+abs_start_pos,rev_seq[s:(s+len(seq))],rev_seq[s:(s+len(seq)+len(PAM))],"-"])
 	return pd.DataFrame(out)
 
 
@@ -514,53 +519,6 @@ def global_alignments(ref,q):
 	alignment, score, start_end_positions = global_pairwise_align_nucleotide(s1,s2,match_score=4,mismatch_score=1)
 	return alignments_to_cigar(alignment[0]._string.decode("utf-8"),alignment[1]._string.decode("utf-8"))
 
-
-
-def is_dPAM2(PAM_seq, target_pos,ref,alt,pegRNA_loc):
-	# currently accept N as ambiguos letter, R will cause error
-	# report a bug in Biopython
-	# https://github.com/biopython/biopython/issues/3023
-	# currently, assuming ref do not contain IUPAC letter
-	# get PAM location
-	PAM_abs_pos=[]
-	PAM_nucleotide=[]
-	flag = 0
-	if pegRNA_loc[3] == "-":
-		for i in range(len(PAM_seq)):
-			if PAM_seq[i]!= "N":
-				PAM_nucleotide.append(PAM_seq[i])
-				PAM_abs_pos.append(pegRNA_loc[1]-i)
-	else:
-		for i in range(len(PAM_seq)):
-			if PAM_seq[i]!= "N":
-				PAM_nucleotide.append(PAM_seq[i])
-				PAM_abs_pos.append(pegRNA_loc[2]+1+i)
-	if len(PAM_abs_pos) == 0:
-		# out = pd.DataFrame([flag])
-		# out.index = ['is_dPAM']
-		return flag
-	
-	## same length
-	diff = len(ref)-len(alt)
-	if diff==0:
-		for i in range(len(ref)):
-			current_pos = target_pos + i
-			if current_pos in PAM_abs_pos:
-				flag = 1
-				break
-	else: # indel
-		for i in range(len(alt)):
-			current_pos = target_pos + i
-			for x in range(len(PAM_abs_pos)):
-				PAM_pos = PAM_abs_pos[x]
-				PAM_nuc = PAM_nucleotide[x]
-				if PAM_pos == current_pos:
-					if alt[i] != PAM_nuc:
-						flag = 1
-	# out = pd.DataFrame([flag])
-	# out.index = ['is_dPAM']
-	# print ("flag",flag)
-	return flag
 def is_dPAM(PAM_seq, RTT, cut_offset=-3):
 	# Assuming no N is RTT, which should be true
 	# match PAM seq to RTT, should be abs(cut_offset)
@@ -618,3 +576,58 @@ def target_to_RTT5_feature(pegRNA,nick_gRNA,target_loc,RTS_length,alt_length):
 
 	pass
 
+
+#------------------ DeepSpCas9 score  ---------------------------
+
+
+def list_to_fasta(l):
+	out = []
+	for i in l:
+		if len(i) != 23:
+			print ("something is wrong")
+		out.append(">%s"%(i[:20]))
+		out.append("AAAA%sAAA"%(i))
+	return "\n".join(out)
+def parse_webpage(c):
+	a=re.findall('"([^"]*)"', str(c))
+	# get the random id
+	for x in a:
+		# random id format could be changed during version updates
+		if "DeepSpCas9/job/user" in x:
+			random_id = x.split("/")[-1]
+	url = "http://deepcrispr.info/DeepSpCas9/data/%s/Results.zip"%(random_id)
+	df = pd.read_csv(url,sep="\t")
+	df[df.ID==df['Guide Sequence (20bp)']]
+	df.index = df.ID.tolist()
+	return df['DeepSpCas9 Score'].to_dict()
+	
+def get_DeepSpCas9_score(gRNA_list):
+	"""Grab score from web server
+	
+	input gRNA list should include PAM sequence, PAM is NGG
+	"""
+	url="http://deepcrispr.info/DeepSpCas9/"
+	br = mechanize.Browser()
+	br.set_handle_robots(False) # ignore robots
+	br.open(url)
+	br.select_form(nr=0)
+	br["ENTER_FASTA"] = list_to_fasta(gRNA_list)
+	res = br.submit()
+	output = res.read()
+	res = parse_webpage(output)
+	flag = False
+	for i in gRNA_list:
+		if not i[:20] in res:
+			print ("gRNA: %s NOT FOUND!"%(i[:20]))
+			print ("DeepSpCas9 API error!")
+			flag = True
+			res[i[:20]] = 0
+	if flag:
+		print (output)
+		print (res)
+	return res
+# gRNA_list = ['GGAATCCCTTCTGCAGCACCAGG','GGCCCAGACTGAGCACGTGAAGG']
+# res = get_DeepSpCas9_score(gRNA_list)
+# GGAATCCCTTCTGCAGCACC    55.750
+# GGCCCAGACTGAGCACGTGA    52.897
+# Name: DeepSpCas9 Score, dtype: float64

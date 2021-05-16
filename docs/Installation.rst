@@ -1,6 +1,11 @@
 Easy-Prime Installation steps
 ==================
 
+.. toctree::
+	:maxdepth: 2
+
+	index
+	Installation
 
 Summary
 ^^^^^^

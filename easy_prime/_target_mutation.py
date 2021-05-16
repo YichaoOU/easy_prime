@@ -79,8 +79,11 @@ class target_mutation:
 		
 
 		# self.feature_for_prediction = ["sgRNA_distance_to_ngRNA","target_to_sgRNA","target_to_RTT5","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',"is_dPAM"] # match the order of training features
-		self.feature_for_prediction = ["sgRNA_distance_to_ngRNA","target_to_sgRNA","target_to_RTT5","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',"is_dPAM"] # match the order of training features
-		self.feature_rename = ["ngRNA_pos","Target_pos","Target_end_flank","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'Folding_DS_1', 'Folding_DS_2', 'Folding_DS_3', 'Folding_DS_4', 'Folding_DS_5', 'Folding_DS_6', 'Folding_DS_7', 'Folding_DS_8', 'Folding_DS_9','Folding_DS_10',"is_dPAM"]
+		self.feature_for_prediction = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9','DeepSpCas9',"sgRNA_distance_to_ngRNA","is_dPAM",'is_PE3b','RTT_GC', 'RTT_length', 'PBS_GC', 'PBS_length', 'N_subsitution', 'N_deletion', 'N_insertions',"target_to_sgRNA","target_to_RTT5"] # match the order of training features
+		# self.feature_rename = ["ngRNA_pos","Target_pos","Target_end_flank","N_subsitution","N_deletion","N_insertions","PBS_GC","RTT_GC","PBS_length","RTT_length",'Folding_DS_1', 'Folding_DS_2', 'Folding_DS_3', 'Folding_DS_4', 'Folding_DS_5', 'Folding_DS_6', 'Folding_DS_7', 'Folding_DS_8', 'Folding_DS_9','Folding_DS_10',"is_dPAM"]
+		self.PE3_model_feature_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'cas9_score', 'nick_to_pegRNA', 'dPAM', 'PE3b', 'RTT_GC', 'RTT_length', 'PBS_GC', 'PBS_length', 'N_subsitution', 'N_deletion', 'N_insertions', 'Target_pos', 'Target_end_flank']
+		self.PE2_model_feature_names = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'cas9_score', 'RTT_GC', 'RTT_length', 'PBS_GC', 'PBS_length', 'N_subsitution', 'N_deletion', 'N_insertions', 'Target_pos', 'Target_end_flank','dPAM']
+
 		
 		
 		self.mutation_pos,self.mutation_ref,self.mutation_alt = find_mutation_pos(pos,ref,alt)
@@ -101,6 +104,7 @@ class target_mutation:
 		# [0, 1, 0, 0]
 		# sgRNA distance to target mutation
 		self.sgRNA_target_distance_dict = {} ## contain valid and invalid sgRNA in the key, but the latter with  distance <0
+		self.DeepSpCas9_dict = {} ## contain DeepSpCas9
 		self.sgRNA_target_dPAM_dict = {} ## contain binary values of whether the target affect this sgRNA PAM
 		# sgRNA distance to ngRNA 
 		self.dist_dict = {} ## sgRNA_ngRNA_distance_dict
@@ -165,7 +169,8 @@ class target_mutation:
 			df = run_pam_finder(search_fa,"N"*sgRNA_length,self.PAM,start,self.chr)
 			## this above df contains all sgRNAs
 			self.N_sgRNA_found = df.shape[0]
-			
+			if df.shape[0] > 0:
+				self.DeepSpCas9_dict = get_DeepSpCas9_score(df[4].unique().tolist())
 			try:
 				df[1] = df[1].astype(int)
 				df[2] = df[2].astype(int)
@@ -207,6 +212,7 @@ class target_mutation:
 					current_max_target_to_sgRNA += 5
 				## sgRNA features
 				self.sgRNA_target_distance_dict = df['target_distance'].to_dict()
+				
 				if debug > 5:
 					print ("showing sgRNAs between 1 to %s"%(current_max_target_to_sgRNA))
 					print (df[df.target_distance.between(1,current_max_target_to_sgRNA)])
@@ -275,7 +281,8 @@ class target_mutation:
 								all_sgRNA_df = self.all_sgRNA,
 								target_fa = self.target_fa,
 								scaffold_seq = scaffold,
-								PAM = self.PAM
+								PAM = self.PAM,
+								DeepSpCas9 = self.DeepSpCas9_dict[x[3]]
 								) 
 						for x in self.valid_init_sgRNA.values.tolist()]
 
@@ -305,18 +312,27 @@ class target_mutation:
 		self.found_dPAM = (self.X['is_dPAM']==1).any()		
 
 
-	def predict(self,debug=0,ML_model=None,**kwargs):
+	def predict(self,debug=0,PE2_model=None,PE3_model=None,**kwargs):
 		if not self.found_PE2:
 			return 0
-		with open(ML_model, 'rb') as file:  
-			xgb_model = pickle.load(file)		
+		with open(PE2_model, 'rb') as file:  
+			xgb_model_PE2 = pickle.load(file)		
+		with open(PE3_model, 'rb') as file:  
+			xgb_model_PE3 = pickle.load(file)		
+		# 5/15/2021 please update
 		self.X = self.X[self.feature_for_prediction]
-		self.X.columns = self.feature_rename
-		pred_y = xgb_model.predict(self.X)
+		self.X.columns = self.PE3_model_feature_names
+		
+		# Split into PE2 and PE3 feature matrix
+		X_PE2 = self.X[self.X.nick_to_pegRNA.isnull()]
+		X_PE3 = self.X[~self.X.nick_to_pegRNA.isnull()]
+		
+		pred_y_PE2 = xgb_model_PE2.predict(X_PE2[self.PE2_model_feature_names])
+		pred_y_PE3 = xgb_model_PE3.predict(X_PE3)
 
 		myPred = pd.DataFrame()
-		myPred['predicted_efficiency'] = pred_y.tolist()
-		myPred.index = self.X.index.tolist()
+		myPred['predicted_efficiency'] = pred_y_PE2.tolist()+pred_y_PE3.tolist()
+		myPred.index = X_PE2.index.tolist()+X_PE3.index.tolist()
 		self.X_p = pd.concat([self.X,myPred],axis=1)
 		self.rawX['predicted_efficiency'] = myPred.loc[self.rawX.index]['predicted_efficiency']
 		
