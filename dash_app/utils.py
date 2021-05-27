@@ -1,4 +1,4 @@
-from dna_features_viewer import GraphicFeature, GraphicRecord
+# from dna_features_viewer import GraphicFeature, GraphicRecord
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
@@ -7,6 +7,7 @@ import plotly.graph_objs as go
 import dash_table
 from flask import Flask, send_from_directory
 from urllib.parse import quote as urlquote
+import dash_bootstrap_components as dbc
 
 # import plotly_express as px
 from dash.dependencies import Input, Output, State

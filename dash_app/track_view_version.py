@@ -5,14 +5,15 @@ import imp
 imp.reload(utils)
 from utils import *
 server = Flask(__name__)
-external_scripts =['https://proteinpaint.stjude.org/bin/proteinpaint.js']
+# external_scripts =['https://proteinpaint.stjude.org/bin/proteinpaint.js']
 external_stylesheets = [dbc.themes.BOOTSTRAP]
 app = dash.Dash(
 	__name__,
-	meta_tags=[{"name": "viewport", "content": "width=800px, initial-scale=1"}],
+	# meta_tags=[{"name": "viewport", "content": "width=800px, initial-scale=1"}],
+	meta_tags=[{"name": "viewport"}],
 	server=server,
 	serve_locally=True,
-	external_scripts=external_scripts,
+	# external_scripts=external_scripts,
 	external_stylesheets=external_stylesheets,
 )
 
@@ -26,17 +27,19 @@ def download(path):
 
 Banner = html.Div(
 			id="banner",
+			className="banner",
 			children=[html.Img(src=app.get_asset_url("logo.png")),html.H4("Easy-Prime %s"%(get_version()))],
 )
-Parameter_selection = html.Div(
-			id="asdss",
-			children=[html.Button('Start', id='start_search')],
-)
 
-'''
-Parameter_selection = 		html.Div(
-			id="left-column",
-			className="four columns",
+Parameter_selection2 = dbc.Row([
+	dbc.Col()
+])
+
+
+
+
+Parameter_selection = html.Div(
+			id="Parameter_selection",
 			children=[
 				# welcome
 				welcome(),
@@ -60,7 +63,7 @@ Parameter_selection = 		html.Div(
 			],
 	
 )
-'''
+
 Output_selection = html.Div(
 			id="sdf",
 			className="sdf",
@@ -71,7 +74,7 @@ Track_view = html.Div(id="PE_track_view")
 
 app.layout = dbc.Container(
 	[
-		dbc.Row(Banner),
+		dbc.Row([dbc.Col(Banner)]),
 		dbc.Row( 
 			[
 				dbc.Col(Parameter_selection, md=4),
@@ -124,12 +127,8 @@ runproteinpaint({
 def embed_iframe(value):
 	if not value:
 		return value
-	videos = {
-		'video1': 'sea2K4AuPOk',
-		'video2': '5BAthiN0htc',
-		'video3': 'e4ti2fCpXMI',
-	}
-	return html.Iframe(id="ifm",srcDoc=test_ttt,width=1600,height=800)
+
+	return html.Iframe(id="ifm",title="ttttt",srcDoc=test_ttt,width=1600,height=800)
 
 '''
 ## main easy prime

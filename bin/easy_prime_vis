@@ -100,11 +100,14 @@ def plot_main(df,output=None,genome_fasta=None,figure_type="png",output_file_nam
 	end = df['end'].max()
 	end -= end%10
 	end += 10
-
+	df = df.fillna("")
 	variant_pos = df.POS.min()
 	ref = df.REF[0]
 	alt = df.ALT[0]
-	correct_pos,new_ref,new_alt = find_mutation_pos(variant_pos,ref,alt)
+	try:
+		correct_pos,new_ref,new_alt = find_mutation_pos(variant_pos,ref,alt)
+	except:
+		correct_pos,new_ref,new_alt = variant_pos,ref,alt
 	predicted_efficiency = df.predicted_efficiency[0]*100
 	pos = variant_pos-start
 	pos_rel_correct = correct_pos-start
