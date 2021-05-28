@@ -3,7 +3,7 @@ Easy-Prime Web server tutorial
 
 .. contents:: 
     :local:
-    
+
 Welcome to Easy-Prime
 ^^^^^^
 
@@ -19,7 +19,7 @@ Get Started
 
 Go to the easy-prime web portal, the webpage looks like below:
 
-.. image:: images/easy_prime_web_portal_init.png
+.. image:: ../images/easy_prime_web_portal_init.png
 	:align: center
 
 Here, you can find areas to input target mutations, to choose different searching parameters, and output visualizations, including a bed-like table and a genome-browser visualization.
@@ -36,7 +36,7 @@ Input formats
 
 The program accepts 4 types of formats. The first two are VCF-like formats. Basically we need 5 types of information, which are: chr, pos, ID, ref, alt, specified in the first 5 columns in a vcf file.
 
-.. image:: images/accept_formats.png
+.. image:: ../images/accept_formats.png
 	:align: center
 
 The last two are fasta-like formats. Basically users can input DNA sequences and the program will automatically determine the target mutation and optimize pegRNA/ngRNA design.
@@ -103,7 +103,7 @@ Once easy-prime is finished, default sgRNA, PBS, RTT, ngRNA selection is set to 
 
 Users can click on each tab (e.g., PBS table tab) to choose other sequences. Selection of sgRNA triggers updates of PBS, RTT, and ngRNA table, since there 3 components are unique for each sgRNA. Each selection triggers the genome browser visualization in the bottom.
 
-.. image:: images/easy_prime_output_vis.png
+.. image:: ../images/easy_prime_output_vis.png
 	:align: center
 
 
