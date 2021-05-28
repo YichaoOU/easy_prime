@@ -78,7 +78,11 @@ def file_download_link(filename):
     return html.A(filename, href=location,target="_blank")
 
 def get_current_pegRNA_table_title_and_download_links(df,jid):
-	show_columns = ['chr','start','end','seq',"predicted_efficiency",'strand']
+	PE = "%.1f"%(df.predicted_efficiency[0])+"%"
+	use_columns = ['chr','start','end','seq',"type",'strand']
+	show_columns = ['#chr','start','end','seq',"type",'strand']
+	df = df[use_columns]
+	df.columns = show_columns
 	table =  dash_table.DataTable(
 		id='pegRNA-table',
 		columns=[
@@ -86,9 +90,10 @@ def get_current_pegRNA_table_title_and_download_links(df,jid):
 		],
 		data=df.to_dict('records'),
 	)
+	
 	header = dbc.FormGroup(
 		[
-			html.H5("Current pegRNA/ngRNA selection",style={"margin-right":10,"margin-left":10}),
+			html.H5("Current pegRNA/ngRNA selection. Predicted efficiency: %s"%(PE),style={"margin-right":10,"margin-left":10}),
 			html.A(html.Button('Download current selection',className="btn btn-dark"),href=df2csv_string(df[show_columns]),target="_blank",download="current_design.csv" ,style={"margin-right":10}),
 			html.A(html.Button('Download all predictions',className="btn btn-dark"),href="results/{}".format(urlquote("%s_rawX_pegRNAs.csv.gz"%(jid))),target="_blank",style={"margin-right":10}),
 		],
@@ -288,6 +293,13 @@ def get_options_dict(jid):
 			out.append({'label': i, 'value': i})
 	return out,first_valid
 
+def get_annotation(x):
+	if "dPAM" in x:
+		return "PAM-disruption"
+	if "PE3b" in x:
+		return "PE3b"
+	return ""
+	
 def to_sgRNA_table(rawX,sample_ID):
 	rawX_df = rawX[rawX.sample_ID.str.contains(sample_ID)]
 	rawX_df = rawX_df[rawX_df['type']=='sgRNA']
@@ -295,7 +307,8 @@ def to_sgRNA_table(rawX,sample_ID):
 	rawX_df = rawX_df.sort_values('predicted_efficiency',ascending=False)
 	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
 	columns = ['chr','start','end','seq','DeepSpCas9_score','strand','target_pos','annotation']
-	rawX_df['annotation'] = ""
+	
+	rawX_df['annotation'] = rawX_df.sample_ID.apply(get_annotation)
 	rawX_df = rawX_df.reset_index(drop=True)
 	return rawX_df[columns]
 
@@ -407,7 +420,7 @@ def df2bedjs(df,output):
 	df = df[['chr','start','end','name']]
 	# print (df.head())
 	df.sort_values('start').to_csv("results/%s.bed"%(output),sep="\t",header=False,index=False,quoting=csv.QUOTE_NONE)
-	os.system("bgzip {0}.bed;tabix -p bed {0}.bed.gz".format(output))
+	os.system("bgzip results/{0}.bed;tabix -p bed results/{0}.bed.gz".format(output))
 	
 	return '''{"type":"bedj","url":"http://easy-prime-test-dev.us-west-2.elasticbeanstalk.com/results/%s.bed.gz","stackheight":20,"stackspace":1,"name":"%s"},'''%(output,track_name)
 

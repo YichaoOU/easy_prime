@@ -1,0 +1,16 @@
+dash
+dash-daq
+biopython
+dash-bio
+dash-html-components
+joblib
+matplotlib
+numpy
+pandas
+plotly
+plotly-express
+PyYAML
+scikit-image
+scikit-learn
+scipy
+seaborn

@@ -1,11 +1,4 @@
-import utils2
-import layout
-
-# exec(open("new_dash_app.py").read())
-import imp  
-imp.reload(utils2)
-imp.reload(layout)
-from utils2 import *
+from utils import *
 from layout import *
 server = Flask(__name__)
 external_stylesheets = [dbc.themes.BOOTSTRAP]
@@ -18,7 +11,7 @@ app = dash.Dash(
 )
 
 application = app.server
-app.config.suppress_callback_exceptions = False
+app.config.suppress_callback_exceptions = True
 app.scripts.config.serve_locally = True
 
 @server.route("/results/<path:path>")
@@ -122,6 +115,7 @@ def load_examples(value):
 	return "chr1","158582552",'rs2251964',"G","A","## comment line, will be ignored\nchr9	110184636	FIG5G_HEK293T_HEK3_6XHIS	G	GCACCATCATCACCATCAT\nchr1	185056772	FIG5E_U2OS_RNF2_1CG	G	C\nchr1	173878832	rs5878	T	C\nchr11	22647331	FIG3C_FANCF_7AC	T	G\nchr19	10244324	EDFIG5B_DNMT1	G	T\n",">rs2251964_ref\nGTTACCAAAGCAAATGACATCTTGTGAAAGGGGAGGTCTGAAAAAAAAAAACAAGTGGGTGGGTTTTTTCAAAGTAGGCCACCGGGCCTGAGATGACCAGAATTCAAATTAGGATGACAGTGTAGTAGGGGAAGCAACCAGAATCGGACCT\n>rs2251964_alt\nGTTACCAAAGCAAATGACATCTTGTGAAAGGGGAGGTCTGAAAAAAAAAAACAAGTGGGTGGGTTTTTTCAAAGTAGGCCACCGGGCCTGAGATAACCAGAATTCAAATTAGGATGACAGTGTAGTAGGGGAAGCAACCAGAATCGGACCT\n",">test_SNV\nGCCTGTGACTAACTGCGCCAAAACGGCCTGTGACTAACTGCGCCAGCCTGTGACTAACTGCGCCAAAACGAAACG(T/A)GCCTGGCCTGTGACTAACTGCGCCAAAACGTGACTAACTGCGCCAAAACGCTTCCAATCCCCTTATCCAATTTA\n>test_insertion\nGCCTGTGCCTGTGACTAACTGCGCCAAAACGGAGCCTGTGACTAACTGCGCCAAAACGCTAACTGCGCCAAAACGT(+CTT)CTTCCGCCTGGCCTGTGACTAACTGCGCCAAAACGTGACTAACTGCGCCAAAACGAATCCCCTTATCCAATTTA\n>test_deletion\nGCCTGTGACTAGCCTGTGACTAACTGCGCCAAAACGACTGCGCGCCTGTGACTAACTGCGCCAAAACGCAAAAC(-GTCT)TCCAATCGCCTGTGACTAACTGCGCCAAAACGCCCTTATCCGCCTGTGACTAACTGCGCCAAAACGAATTTA\n"
 
 
+
 # select variants and update sgRNA table
 @app.callback(
 	[
@@ -139,10 +133,11 @@ def load_examples(value):
 	]
 )
 def update_sgRNA_table(sample_ID,rawX,X_p):
+	# print ("inside update_sgRNA_table",sample_ID)
 	if not sample_ID:
-		# return init_sgRNA_table.to_dict('records'),None,None
+		# print ("sample ID is None")
 		return None
-	# print ("inside update_sgRNA_table")
+	
 	rawX = pd.read_json(rawX, orient='split')
 	# print (rawX.head())
 	X_p = pd.read_json(X_p, orient='split')
@@ -180,8 +175,9 @@ def update_sgRNA_table(sample_ID,rawX,X_p):
 	]
 )
 def update_other_3_tables(sgRNA_table_index,rawX,sgRNA_df):
+	# print ("inside update_other_3_tables",sgRNA_table_index)
 	if not sgRNA_table_index:
-		# return init_PBS_table.to_dict('records'),init_RTT_table.to_dict('records'),init_ngRNA_table.to_dict('records'),None,None,None,None,None,None
+		# print ("sgRNA_table_index is None")
 		return None
 	sgRNA_df = pd.read_json(sgRNA_df, orient='split')
 	# print (sgRNA_df.head())
@@ -370,6 +366,8 @@ def start_easy_prime(jid,active_tab,chr,pos,variant_id,ref,alt,vcf_batch,fasta_i
 	try:
 		rawX,X_p = read_easy_prime_output(jid)
 		options,sample_ID =  get_options_dict(jid)
+		# print (rawX.head())
+		# print ("finish reading easy prime output")
 	except Exception as e:
 		status_header = "Parsing Easy-Prime output error!"
 		return None,None,[],None,status_header,str(e)
@@ -424,5 +422,6 @@ def toggle_modal(n1,n2, is_open):
 #--------------------------------- Info button callbacks (end) --------------------------------------
 
 if __name__ == '__main__':
-	app.run_server(debug=True,host='0.0.0.0',port=8000,use_reloader=False)
+	# app.run_server(debug=True,host='0.0.0.0',port=8000,use_reloader=False)
+	app.run_server(debug=False,port=80)
 	# app.run_server(debug=False,host='0.0.0.0',port=8000)
