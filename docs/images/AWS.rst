@@ -32,6 +32,9 @@ For starter, you can first click ``Examples`` to automatically load input exampl
 
 Sometimes you might experience error (very likely due to incorrect input format), you can click the ``check running status`` button for error messages. Note that it may not be able to capture all kinds of errors.
 
+.. note:: If you do experience error and everything seems not working, please refresh the browser and start over. If the issue is still there, please email us.
+
+
 Input formats
 ^^^^^
 
