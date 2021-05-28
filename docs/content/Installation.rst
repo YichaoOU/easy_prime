@@ -1,12 +1,8 @@
 Easy-Prime Installation steps
 ==================
 
-.. toctree::
-	:maxdepth: 2
-
-	index
-	Installation
-	AWS
+.. contents:: 
+    :local:
 
 Summary
 ^^^^^^

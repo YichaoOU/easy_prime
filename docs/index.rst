@@ -2,13 +2,13 @@
 Easy-Prime: *Machine learning based pegRNA design*
 ====================================================================
 
-
+Contents:
+---------
 .. toctree::
 	:maxdepth: 2
 
-	index
-	Installation
-	AWS
+	content/Installation
+	content/AWS
 
 Ask questions here
 ^^^^^^^^^^^^^^^^^

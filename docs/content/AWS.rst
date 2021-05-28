@@ -1,13 +1,9 @@
 Easy-Prime Web server tutorial
 ==================
 
-.. toctree::
-	:maxdepth: 2
-
-	index
-	Installation
-	AWS
-
+.. contents:: 
+    :local:
+    
 Welcome to Easy-Prime
 ^^^^^^
 
