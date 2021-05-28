@@ -8,6 +8,7 @@ Easy-Prime: *Machine learning based pegRNA design*
 
 	index
 	Installation
+	AWS
 
 Ask questions here
 ^^^^^^^^^^^^^^^^^

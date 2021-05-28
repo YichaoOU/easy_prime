@@ -6,6 +6,7 @@ Easy-Prime Installation steps
 
 	index
 	Installation
+	AWS
 
 Summary
 ^^^^^^
