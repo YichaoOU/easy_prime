@@ -57,15 +57,59 @@ def vis_pegRNA_png(df_file,jid):
 	if os.path.isfile(f"results/{jid}.fa"):
 		subprocess.call(f"easy_prime_vis -f {df_file} -s results/{jid}.fa --output_file_name results/{jid}.png",shell=True)
 	else:
-		print ("using genome fasta")
+		# print ("using genome fasta")
 		cmd = f"easy_prime_vis -f {df_file} -s {genome_fasta} --output_file_name results/{jid}.png"
-		print (cmd)
+		# print (cmd)
 		subprocess.call(cmd,shell=True)
 	fig = f"results/{jid}.png"
 	with open(fig, "rb") as image_file:
 		img_string = base64.b64encode(image_file.read())
 	return "data:image/png;base64,%s"%(img_string.decode("utf-8"))
 
+
+def df2csv_string(df):
+	csv_string = df.to_csv(index=False, encoding='utf-8')
+	csv_string = "data:text/csv;charset=utf-8,%EF%BB%BF" + urllib.parse.quote(csv_string)
+	return csv_string
+
+def file_download_link(filename):
+    """Create a Plotly Dash 'A' element that downloads a file from the app."""
+    location = "results/{}".format(urlquote(filename))
+    return html.A(filename, href=location,target="_blank")
+
+def get_current_pegRNA_table_title_and_download_links(df,jid):
+	show_columns = ['chr','start','end','seq',"predicted_efficiency",'strand']
+	table =  dash_table.DataTable(
+		id='pegRNA-table',
+		columns=[
+			{'name': i, 'id': i, 'deletable': False} for i in show_columns
+		],
+		data=df.to_dict('records'),
+	)
+	header = dbc.FormGroup(
+		[
+			html.H5("Current pegRNA/ngRNA selection",style={"margin-right":10,"margin-left":10}),
+			html.A(html.Button('Download current selection',className="btn btn-dark"),href=df2csv_string(df[show_columns]),target="_blank",download="current_design.csv" ,style={"margin-right":10}),
+			html.A(html.Button('Download all predictions',className="btn btn-dark"),href="results/{}".format(urlquote("%s_rawX_pegRNAs.csv.gz"%(jid))),target="_blank",style={"margin-right":10}),
+		],
+		row=True,
+	)
+	return [header,table]
+
+def get_current_selection_table(df):
+	show_columns = ['chr','start','end','seq',"predicted_efficiency",'strand']
+	table =  dash_table.DataTable(
+		id='pegRNA-table',
+		columns=[
+			{'name': i, 'id': i, 'deletable': False} for i in show_columns
+		],
+		data=df.to_dict('records'),
+	)
+
+	return [html.H5("Current pegRNA/ngRNA selection"),table]
+
+
+download_current_selection_button = html.A(html.Button('Submit feedback!'),href='https://github.com/czbiohub/singlecell-dash/issues/new',target="_blank")
 
 
 #--------------------------------- easy prime search ---------------------------
@@ -94,7 +138,7 @@ def run_easy_prime_backend():
 	return False,error_message
 
 def run_easy_prime_backend(vcf,jid,parameters):
-	print (vcf.head())
+	# print (vcf.head())
 	if vcf.shape[1]==5:
 		vcf[5] = vcf2fasta(vcf,**parameters)
 		vcf = vcf[list(range(6))]
@@ -129,6 +173,8 @@ def PD2fasta_dict(input_string):
 	myDict = read_fasta(StringIO(input_string))
 	for k in myDict:
 		s = myDict[k]
+		if s.count("(")>1:
+			return 0
 		before = s[:s.find("(")]
 		after = s[s.find(")")+1:]
 		mutation = s[s.find("(")+1:s.find(")")]
@@ -160,24 +206,24 @@ def check_and_convert_input(input_type,chr,pos,variant_id,ref,alt,vcf_batch,fast
 		if not "chr" in chr:
 			chr = "chr"+chr
 		if not chr in main_chr_human:
-			return True,"Input chromosome %s not found in hg19 main chromosomes"%(chr)
+			return None, True,"Input chromosome %s not found in hg19 main chromosomes"%(chr)
 		try:
 			pos = int(pos)
 		except:
-			return True,"Input Position %s can't converted to integer"%(pos)
+			return None, True,"Input Position %s can't converted to integer"%(pos)
 		name = variant_id
 		if name == "":
-			return True,"Input Name is empty!"
+			return None, True,"Input Name is empty!"
 		ref = ref.upper()
 		if ref == "":
-			return True,"Input Name is empty!"
+			return None, True,"Input Name is empty!"
 		alt = alt.upper()
 		if alt == "":
-			return True,"Input Name is empty!"
+			return None, True,"Input Name is empty!"
 		if not is_valid_DNA(ref):
-			return True,"Input reference allele is not valid, only A,C,G,T is allowed!"
+			return None, True,"Input reference allele is not valid, only A,C,G,T is allowed!"
 		if not is_valid_DNA(alt):
-			return True,"Input alternative allele is not valid, only A,C,G,T is allowed!"
+			return None, True,"Input alternative allele is not valid, only A,C,G,T is allowed!"
 		vcf = pd.DataFrame([[chr,pos,name,ref,alt]])
 
 	if input_type == "vcf_batch_tab":
@@ -187,9 +233,9 @@ def check_and_convert_input(input_type,chr,pos,variant_id,ref,alt,vcf_batch,fast
 			vcf =vcf.drop_duplicates(2) # remove duplicated names
 			vcf[3] = [x.upper() for x in vcf[3]]
 			vcf[4] = [x.upper() for x in vcf[4]]
-
 		except Exception as e:
-			return True,"Input vcf_batch can't be parsed correctly! %s"%(e)
+			# print (e)
+			return None, True,"Input vcf_batch can't be parsed correctly! %s"%(e)
 	if input_type == "fasta_tab":
 		try:
 			file_name = "results/%s.fa"%(jid)
@@ -197,8 +243,8 @@ def check_and_convert_input(input_type,chr,pos,variant_id,ref,alt,vcf_batch,fast
 			write_fasta(file_name,myDict)
 			vcf = fasta2vcf(file_name)
 		except Exception as e:
-			print (e)
-			return None,True,"Input fasta can't be parsed correctly! %s"%(e)
+			# print (e)
+			return None,True,"Input fasta can't be parsed correctly! Make sure fasta length >= 50bp. Error: %s"%(e)
 	if input_type == "PrimeDesign_tab":
 		try:
 			file_name = "results/%s.fa"%(jid)
@@ -206,8 +252,8 @@ def check_and_convert_input(input_type,chr,pos,variant_id,ref,alt,vcf_batch,fast
 			write_fasta(file_name,myDict)
 			vcf = fasta2vcf(file_name)
 		except Exception as e:
-			print (e)
-			return None,True,"Input PrimeDesign sequences can't be parsed correctly! %s"%(e)
+			# print (e)
+			return None,True,"Input PrimeDesign sequences can't be parsed correctly! Currently, combinatorial editing in this format is not supported! %s"%(e)
 
 
 	return vcf,False,error_message
@@ -226,8 +272,7 @@ def read_easy_prime_output(jid):
 	rawX['nick_pos'] = X_p['nick_to_pegRNA']
 	rawX['PBS_length'] = X_p['PBS_length']
 	rawX['RTT_length'] = X_p['RTT_length']
-	error_message = ""
-	return False,error_message,rawX,X_p
+	return rawX,X_p
 
 def get_options_dict(jid):
 	df = pd.read_csv("results/%s_summary.csv"%(jid),index_col=0)
@@ -343,16 +388,6 @@ def to_RTT_table2(rawX,sample_ID_list,best_ID=None):
 	rawX_df = rawX_df.reset_index(drop=True)
 	return rawX_df[columns],rawX_df[rawX_df.sample_ID == best_ID].index.tolist()
 
-def get_current_selection_table(df):
-	show_columns = ['chr','start','end','seq',"predicted_efficiency",'strand']
-	table =  dash_table.DataTable(
-		id='pegRNA-table',
-		columns=[
-			{'name': i, 'id': i, 'deletable': False} for i in show_columns
-		],
-		data=df.to_dict('records'),
-	)
-	return [html.H5("Current pegRNA/ngRNA selection"),table]
 
 def get_uid():
 	# return "easy_prime_yli11_2021-05-24_result_dir"
@@ -370,7 +405,7 @@ def df2bedjs(df,output):
 	df['name'] = df.apply(lambda r:"""{"strand":"%s","name":"%s","color":"%s"}"""%(r.strand,r['type'],my_colors[r['type']]),axis=1)
 	track_name = "pegRNA_design_%.1f"%(df.predicted_efficiency[0])
 	df = df[['chr','start','end','name']]
-	print (df.head())
+	# print (df.head())
 	df.sort_values('start').to_csv("results/%s.bed"%(output),sep="\t",header=False,index=False,quoting=csv.QUOTE_NONE)
 	os.system("bgzip {0}.bed;tabix -p bed {0}.bed.gz".format(output))
 	

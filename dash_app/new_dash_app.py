@@ -258,8 +258,10 @@ def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_ta
 	vis_df = rawX[rawX.sample_ID==ID]
 	
 	vis_df['vis_name'] = vis_df.target_pos.astype(str)+"_"+vis_df.PBS_length.astype(str)+"_"+vis_df.RTT_length.astype(str)+"_"+vis_df.nick_pos.astype(str)
-	view_location = "%s:%s-%s"%(rawX.CHROM[0],rawX.POS[0],rawX.POS[0]+len(rawX.REF[0]))
-	
+	try:
+		view_location = "%s:%s-%s"%(rawX.CHROM[0],rawX.POS[0],rawX.POS[0]+len(rawX.REF[0]))
+	except:
+		view_location = "%s:%s-%s"%(rawX.CHROM[0],rawX.POS[0],rawX.POS[0]+1)
 	vis_name = variant_id+"_"+vis_df.vis_name[0]
 	tab_id = "tab-%s"%(len(vis_tab))
 	
@@ -274,13 +276,13 @@ def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_ta
 	# print (vis_tab[0].label)
 	if active_tab in ['vcf_tab','vcf_batch_tab']:
 		vis_bed = "%s_%s"%(jid,len(vis_tab))
-		print (vis_bed)
+		# print (vis_bed)
 		track_src = df2bedjs(vis_df,vis_bed)
 		# print ("showing both iframe and image")
 		vis_tab.append(add_vis_tab(vis_name,"iframe",img_src,tab_id,track_src = track_src,view_location=view_location))
 	else:
 		vis_tab.append(add_vis_tab(vis_name,"",img_src,tab_id))
-	return vis_tab,tab_id,get_current_selection_table(vis_df),None
+	return vis_tab,tab_id,get_current_pegRNA_table_title_and_download_links(vis_df,jid),None
 #----------------------- main callbacks ---------------------------
 
 # first create a new jid, then jid trigger easy_prime
@@ -338,12 +340,13 @@ def start_easy_prime(jid,active_tab,chr,pos,variant_id,ref,alt,vcf_batch,fasta_i
 	finished_message = "Your result should be finished. Job ID is: %s. If you didn't see any results in the table or track visualization below, please email Yichao.Li@stjude.org."%(jid)
 	# check input
 	vcf,input_error_flag,error_message = check_and_convert_input(active_tab,chr,pos,variant_id,ref,alt,vcf_batch,fasta_input,PrimeDesign_input,jid)
-	print (vcf)
+	# print (vcf)
+	# print (input_error_flag,error_message)
 	if input_error_flag:
 		status_header = "Input format error!"
-		print (error_message)
+		# print (error_message)
 		# return None,None,None,None,None,None,status_header,error_message
-		return None
+		return None,None,[],None,status_header,error_message
 	
 	
 	# start easy_prime
@@ -355,23 +358,21 @@ def start_easy_prime(jid,active_tab,chr,pos,variant_id,ref,alt,vcf_batch,fasta_i
 		parameters['max_RTT_length'] = rtt_value[1]
 		parameters['max_ngRNA_distance'] = ngRNA_value
 		summary,df_top,df_all,X_p = run_easy_prime_backend(vcf,jid,parameters)
+		# print ("finish easy prime")
 	except Exception as e:
 		status_header = "Easy-prime running error!"
-		print (e)
-		return None
-		# return None,None,None,None,None,None,status_header,error_message
-	
-	# read easy_prime output
-	easy_prime_error_flag,error_message,rawX,X_p = read_easy_prime_output(jid)
-	options,sample_ID =  get_options_dict(jid)
-	# print (options)
-	# print (sample_ID)
-	if easy_prime_error_flag:
-		status_header = "Parsing Easy-Prime output error!"
-		return None
-		# return None,None,None,None,None,None,status_header,error_message
+		# print ("easy_prime running error")
+		# print (e)
+		return None,None,[],None,status_header,str(e)
 
-	# print ("updating Main")
+	# read easy_prime output
+	try:
+		rawX,X_p = read_easy_prime_output(jid)
+		options,sample_ID =  get_options_dict(jid)
+	except Exception as e:
+		status_header = "Parsing Easy-Prime output error!"
+		return None,None,[],None,status_header,str(e)
+
 	return rawX.to_json(date_format='iso', orient='split'),X_p.to_json(date_format='iso', orient='split'),options,sample_ID,status_header,finished_message
 
 

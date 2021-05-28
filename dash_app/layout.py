@@ -470,8 +470,8 @@ parameter_input = html.Div([
 
 job_submission = dbc.FormGroup(
 	[
-		html.Button('Start', id='start_search'),
-		html.Button('Examples', id='show_example',className="ml-auto mr-5"),
+		html.Button('Start', id='start_search',className='btn btn-primary'),
+		html.Button('Examples', id='show_example',className="ml-auto mr-5 btn btn-info"),
 	],
 	row=True,style={'margin-left':10,'margin-top':10,'margin-bottom':10},
 )
@@ -588,7 +588,7 @@ runproteinpaint({
 
 
 def get_PE_vis_tracks(view_location,track_src):
-	print (view_location,track_src)
+	# print (view_location,track_src)
 	PE_vis_tracks = PE_vis_track_template.replace("{track_src}",track_src)
 	PE_vis_tracks = PE_vis_tracks.replace("{view_location}",view_location)
 
