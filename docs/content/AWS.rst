@@ -53,7 +53,7 @@ VCF format
 	chr11	22647331	FIG3C_FANCF_7AC_PE3B	T	G
 	chr19	10244324	EDFIG5B_DNMT1_dPAM	G	T
 
-The ``VCF`` tab is used for single target mutation and the ``VCF batch`` tab is used for any number of target mutations (prefer less than 100 mutations). If you want to design pegRNAs for large number of mutations, please download the command line program.
+The ``VCF`` tab is used for single target mutation and the ``VCF batch`` tab is used for any number of target mutations (prefer less than 10 mutations). The server prohibits output file size > 50M. If you want to design pegRNAs for large number of mutations, please download the command line program.
 
 Note that this format is a tsv format, please do not confuse the program with space or comma. You can first create the input in excel and then copy and paste it to the text box.
 
@@ -103,7 +103,17 @@ Once easy-prime is finished, default sgRNA, PBS, RTT, ngRNA selection is set to 
 
 Users can click on each tab (e.g., PBS table tab) to choose other sequences. Selection of sgRNA triggers updates of PBS, RTT, and ngRNA table, since there 3 components are unique for each sgRNA. Each selection triggers the genome browser visualization in the bottom.
 
+To download all results for current Easy-Prime prediction, click the ``Download all prediction`` button. This will download all prediction in a bed-like format as a zip file. Remember that Easy-Prime exhaustively searches all combinations, this is a big file.
+
+To download your current selection, click "Download current selection". This is a bed-like format containing the 4 components of a pegRNA/ngRNA, which are sgRNA, PBS, RTT, and ngRNA.
+
 .. image:: ../images/easy_prime_output_vis.png
 	:align: center
 
+Output pegRNA/ngRNA genome browser visualization
+^^^^^^^^^^^^^
 
+
+Genome browser view is powered by Protein Paint (https://pecan.stjude.cloud/proteinpaint). You can zoom in to actually see the DNA bases.
+
+Howevery, we only support hg19 in the tracks. So then the second visualization, will be better if your input is in FASTA format (e.g., if you have hg38 variant, you can first extract +/- 100bp sequence and input here).
