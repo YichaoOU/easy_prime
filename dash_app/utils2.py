@@ -233,6 +233,7 @@ def check_and_convert_input(input_type,chr,pos,variant_id,ref,alt,vcf_batch,fast
 
 	if input_type == "vcf_batch_tab":
 		try:
+			vcf_batch = vcf_batch.replace(" ","\t")
 			vcf = pd.read_csv(StringIO(vcf_batch),comment="#",sep="\t",header=None)
 			vcf[1] = vcf[1].astype(int)
 			vcf =vcf.drop_duplicates(2) # remove duplicated names
@@ -329,7 +330,7 @@ def to_sgRNA_table2(rawX,X_p,sample_ID):
 
 
 def to_ngRNA_table(rawX,sgRNA_location):
-	sample_ID_list = rawX[rawX.location_name==sgRNA_location].sample_ID.tolist()
+	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='ngRNA']
 	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
@@ -354,7 +355,7 @@ def to_ngRNA_table2(rawX,X_p,sample_ID_list,best_ID=None):
 
 
 def to_PBS_table(rawX,sgRNA_location):
-	sample_ID_list = rawX[rawX.location_name==sgRNA_location].sample_ID.tolist()
+	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='PBS']
 	columns = ['chr','start','end','seq','PBS_length','strand']
@@ -378,7 +379,7 @@ def to_PBS_table2(rawX,sample_ID_list,best_ID=None):
 	return rawX_df[columns],rawX_df[rawX_df.sample_ID == best_ID].index.tolist()
 
 def to_RTT_table(rawX,sgRNA_location):
-	sample_ID_list = rawX[rawX.location_name==sgRNA_location].sample_ID.tolist()
+	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='RTT']
 	columns = ['chr','start','end','seq','RTT_length','strand']
@@ -420,7 +421,7 @@ def df2bedjs(df,output):
 	df = df[['chr','start','end','name']]
 	# print (df.head())
 	df.sort_values('start').to_csv("results/%s.bed"%(output),sep="\t",header=False,index=False,quoting=csv.QUOTE_NONE)
-	os.system("bgzip results/{0}.bed;tabix -p bed results/{0}.bed.gz".format(output))
+	os.system("bgzip -f results/{0}.bed;tabix -f -p bed results/{0}.bed.gz".format(output))
 	
 	return '''{"type":"bedj","url":"http://easy-prime-test-dev.us-west-2.elasticbeanstalk.com/results/%s.bed.gz","stackheight":20,"stackspace":1,"name":"%s"},'''%(output,track_name)
 

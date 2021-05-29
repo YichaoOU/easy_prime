@@ -150,6 +150,11 @@ def update_sgRNA_table(sample_ID,rawX,X_p):
 	# sgRNA_df,ID_list = to_sgRNA_table(rawX,X_p,sample_ID)
 	sgRNA_df = to_sgRNA_table(rawX,sample_ID)
 	selected_sgRNA = [0]
+	# print ("updating sgRNA table")
+	if "PAM-disruption" in sgRNA_df.annotation.tolist():
+		# print ("Yes, dPAM!")
+		selected_sgRNA = sgRNA_df[sgRNA_df.annotation=="PAM-disruption"].index.tolist()[:1]
+		# print (selected_sgRNA)
 	sgRNA_df_stored = sgRNA_df.copy()
 	
 	sgRNA_df_stored['name'] = sgRNA_df_stored.chr+"_"+sgRNA_df_stored.start.astype(str)+"_"+sgRNA_df_stored.end.astype(str)+"_"+sgRNA_df_stored.seq
@@ -186,6 +191,7 @@ def update_other_3_tables(sgRNA_table_index,rawX,sgRNA_df):
 	sgRNA_df = pd.read_json(sgRNA_df, orient='split')
 	# print (sgRNA_df.head())
 	sgRNA_location = sgRNA_df.at[sgRNA_table_index[0],'name']
+	# print ("sgRNA_location",sgRNA_location)
 	rawX = pd.read_json(rawX, orient='split')
 	RTT_df,selected_RTT = to_RTT_table(rawX,sgRNA_location)
 	# print (RTT_df,selected_RTT)
@@ -233,6 +239,7 @@ def update_other_3_tables(sgRNA_table_index,rawX,sgRNA_df):
 	]
 )
 def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_table_index,rawX,sgRNA_df,PBS_df,RTT_df,ngRNA_df,jid,active_tab,vis_tab,variant_id):
+	# print (sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_table_index)
 	if not PBS_table_index:
 		return None
 	rawX = pd.read_json(rawX, orient='split')
@@ -249,6 +256,10 @@ def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_ta
 	ID2 = rawX[rawX.location_name==PBS_location].sample_ID.tolist()
 	ID3 = rawX[rawX.location_name==RTT_location].sample_ID.tolist()
 	ID4 = rawX[rawX.location_name==ngRNA_location].sample_ID.tolist()
+	# print (sgRNA_location)
+	# print (PBS_location)
+	# print (RTT_location)
+	# print (ngRNA_location)
 	# print (ID1)
 	# print (ID2)
 	# print (ID3)

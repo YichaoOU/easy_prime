@@ -214,7 +214,7 @@ VCF_batch_input = dbc.Card(
 		[
 			dcc.Textarea(
 				id='vcf_batch_input',
-				placeholder ='VCF format\nThe first 5 columns: chr, id, pos, ref, alt\n #comment line will be ignored',
+				placeholder ='VCF format\nThe first 5 columns: chr, id, pos, ref, alt\n #comment line will be ignored\n#For your convenience, both tab-separated values and space-separated values are acceptable',
 				style={'width': '100%', 'height': 250,'padding':"0 0 0 0","font-size":"13px"},
 			),
 		],style={'width': '100%', 'height': 250,'padding':"0 0 0 0"},
@@ -382,7 +382,7 @@ def PBS_slider():
 	labelDict[17] = {'label':'17','style': {'color': '#77b0b1'}}
 	# subtitle = 'Please select the maximum PBS length'
 	subtitle = 'Primer Binding Sequence length'
-	return myRangeSlider("pbs",7,17,labelDict,defaultValue=[10,14],subtitle=subtitle)
+	return myRangeSlider("pbs",7,17,labelDict,defaultValue=[10,15],subtitle=subtitle)
 
 def ngRNA_slider():
 	labelDict={}
@@ -394,7 +394,7 @@ def ngRNA_slider():
 	# subtitle = 'Please select the maximum ngRNA distance to pegRNA'
 	subtitle = 'nick-gRNA distance'
 	# title = 'ngRNA to pegRNA distance range'
-	return mySlider("ngRNA",0,200,labelDict,defaultValue=100,subtitle=subtitle)
+	return mySlider("ngRNA",0,200,labelDict,defaultValue=90,subtitle=subtitle)
 
 RTT_input = dbc.Card(
 	dbc.CardBody(
@@ -542,7 +542,7 @@ vis_tracks = html.Div([
 ],style={"background-color":"white","margin-top":10})
 
 def add_vis_tab(name,flag,src,tab_id,track_src=None,view_location=None):
-	image = html.Img(src=src)
+	image = html.Img(src=src,className="rounded border border-dark")
 	if flag == "iframe":
 		iframe = html.Iframe(title=name,srcDoc=get_PE_vis_tracks(view_location,track_src),width="100%",height=400)
 		# iframe = html.Iframe(title=name,srcDoc=get_PE_vis_tracks())

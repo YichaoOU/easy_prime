@@ -101,17 +101,6 @@ def get_current_pegRNA_table_title_and_download_links(df,jid):
 	)
 	return [header,table]
 
-def get_current_selection_table(df):
-	show_columns = ['chr','start','end','seq',"predicted_efficiency",'strand']
-	table =  dash_table.DataTable(
-		id='pegRNA-table',
-		columns=[
-			{'name': i, 'id': i, 'deletable': False} for i in show_columns
-		],
-		data=df.to_dict('records'),
-	)
-
-	return [html.H5("Current pegRNA/ngRNA selection"),table]
 
 
 download_current_selection_button = html.A(html.Button('Submit feedback!'),href='https://github.com/czbiohub/singlecell-dash/issues/new',target="_blank")
@@ -233,6 +222,7 @@ def check_and_convert_input(input_type,chr,pos,variant_id,ref,alt,vcf_batch,fast
 
 	if input_type == "vcf_batch_tab":
 		try:
+			vcf_batch = vcf_batch.replace(" ","\t")
 			vcf = pd.read_csv(StringIO(vcf_batch),comment="#",sep="\t",header=None)
 			vcf[1] = vcf[1].astype(int)
 			vcf =vcf.drop_duplicates(2) # remove duplicated names
@@ -312,24 +302,9 @@ def to_sgRNA_table(rawX,sample_ID):
 	rawX_df = rawX_df.reset_index(drop=True)
 	return rawX_df[columns]
 
-def to_sgRNA_table2(rawX,X_p,sample_ID):
-	rawX_df = rawX[rawX.sample_ID.str.contains(sample_ID)]
-	rawX_df = rawX_df[rawX_df['type']=='sgRNA']
-	X_p_df = X_p[X_p.sample_ID.str.contains(sample_ID)]
-	rawX_df = rawX_df.sort_values('predicted_efficiency',ascending=False)
-	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
-
-	columns = ['chr','start','end','seq','DeepSpCas9_score','strand','target_pos','annotation']
-	rawX_df['DeepSpCas9_score'] = X_p_df['cas9_score']
-	rawX_df['target_pos'] = X_p_df['Target_pos']
-	rawX_df['annotation'] = ""
-	rawX_df = rawX_df.reset_index(drop=True)
-	ID_list = rawX_df.sample_ID.tolist()
-	return rawX_df[columns],ID_list
-
 
 def to_ngRNA_table(rawX,sgRNA_location):
-	sample_ID_list = rawX[rawX.location_name==sgRNA_location].sample_ID.tolist()
+	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='ngRNA']
 	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
@@ -339,22 +314,8 @@ def to_ngRNA_table(rawX,sgRNA_location):
 	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
 
 
-def to_ngRNA_table2(rawX,X_p,sample_ID_list,best_ID=None):
-	if not best_ID:
-		best_ID = sample_ID_list[0]
-	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
-	X_p_df = X_p[X_p.sample_ID.isin(sample_ID_list)]
-	rawX_df = rawX_df[rawX_df['type']=='ngRNA']
-	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
-	columns = ['chr','start','end','seq','nick_pos','strand']
-	rawX_df['nick_pos'] = X_p_df['nick_to_pegRNA']
-	rawX_df = rawX_df.reset_index(drop=True)
-	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
-
-
-
 def to_PBS_table(rawX,sgRNA_location):
-	sample_ID_list = rawX[rawX.location_name==sgRNA_location].sample_ID.tolist()
+	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='PBS']
 	columns = ['chr','start','end','seq','PBS_length','strand']
@@ -364,21 +325,8 @@ def to_PBS_table(rawX,sgRNA_location):
 	rawX_df = rawX_df.reset_index(drop=True)
 	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
 
-
-def to_PBS_table2(rawX,sample_ID_list,best_ID=None):
-	if not best_ID:
-		best_ID = sample_ID_list[0]
-	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
-	rawX_df = rawX_df[rawX_df['type']=='PBS']
-	columns = ['chr','start','end','seq','PBS_length','strand']
-	rawX_df = rawX_df.drop_duplicates('seq')
-	rawX_df['PBS_length'] = rawX_df.seq.apply(len)
-	rawX_df = rawX_df.sort_values('PBS_length')
-	rawX_df = rawX_df.reset_index(drop=True)
-	return rawX_df[columns],rawX_df[rawX_df.sample_ID == best_ID].index.tolist()
-
 def to_RTT_table(rawX,sgRNA_location):
-	sample_ID_list = rawX[rawX.location_name==sgRNA_location].sample_ID.tolist()
+	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='RTT']
 	columns = ['chr','start','end','seq','RTT_length','strand']
@@ -387,19 +335,6 @@ def to_RTT_table(rawX,sgRNA_location):
 	rawX_df = rawX_df.sort_values('RTT_length')
 	rawX_df = rawX_df.reset_index(drop=True)
 	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
-
-
-def to_RTT_table2(rawX,sample_ID_list,best_ID=None):
-	if not best_ID:
-		best_ID = sample_ID_list[0]
-	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
-	rawX_df = rawX_df[rawX_df['type']=='RTT']
-	columns = ['chr','start','end','seq','RTT_length','strand']
-	rawX_df = rawX_df.drop_duplicates('seq')
-	rawX_df['RTT_length'] = rawX_df.seq.apply(len)
-	rawX_df = rawX_df.sort_values('RTT_length')
-	rawX_df = rawX_df.reset_index(drop=True)
-	return rawX_df[columns],rawX_df[rawX_df.sample_ID == best_ID].index.tolist()
 
 
 def get_uid():
@@ -420,7 +355,7 @@ def df2bedjs(df,output):
 	df = df[['chr','start','end','name']]
 	# print (df.head())
 	df.sort_values('start').to_csv("results/%s.bed"%(output),sep="\t",header=False,index=False,quoting=csv.QUOTE_NONE)
-	os.system("bgzip results/{0}.bed;tabix -p bed results/{0}.bed.gz".format(output))
+	os.system("bgzip -f results/{0}.bed;tabix -f -p bed results/{0}.bed.gz".format(output))
 	
 	return '''{"type":"bedj","url":"http://easy-prime-test-dev.us-west-2.elasticbeanstalk.com/results/%s.bed.gz","stackheight":20,"stackspace":1,"name":"%s"},'''%(output,track_name)
 

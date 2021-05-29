@@ -145,6 +145,10 @@ def update_sgRNA_table(sample_ID,rawX,X_p):
 	# sgRNA_df,ID_list = to_sgRNA_table(rawX,X_p,sample_ID)
 	sgRNA_df = to_sgRNA_table(rawX,sample_ID)
 	selected_sgRNA = [0]
+	if "PAM-disruption" in sgRNA_df.annotation.tolist():
+		# print ("Yes, dPAM!")
+		selected_sgRNA = sgRNA_df[sgRNA_df.annotation=="PAM-disruption"].index.tolist()[:1]
+		# print (selected_sgRNA)
 	sgRNA_df_stored = sgRNA_df.copy()
 	
 	sgRNA_df_stored['name'] = sgRNA_df_stored.chr+"_"+sgRNA_df_stored.start.astype(str)+"_"+sgRNA_df_stored.end.astype(str)+"_"+sgRNA_df_stored.seq
