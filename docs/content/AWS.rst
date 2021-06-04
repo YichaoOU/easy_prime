@@ -9,9 +9,9 @@ Welcome to Easy-Prime
 
 Easy-Prime is a machine learning based tool for prime editing gRNA (pegRNA) design. Please input your desire edits in VCF format or FASTA format and click start. Additionally, you can play with the pegRNA/ngRNA searching parameters. Outputs include a bed-like table and genome-browser visualization.
 
-This web server is based on Dash. URL is: http://easy-prime-test-dev.us-west-2.elasticbeanstalk.com/ 
+This web server is based on Dash. URL is: http://easy-prime.cc/ 
 
-Currently it only supports hg19. 
+.. note:: Currently, this web portal only supports hg19. 
 
 
 Get Started
@@ -26,7 +26,7 @@ Here, you can find areas to input target mutations, to choose different searchin
 
 For starter, you can first click ``Examples`` to automatically load input examples for the 4 acceptable formats.
 
-Sometimes you might experience error (very likely due to incorrect input format), you can click the ``check running status`` button for error messages. Note that it may not be able to capture all kinds of errors.
+If you experience error (very likely due to incorrect input format), you can click the ``check running status`` button for error messages. Note that it may not be able to capture all kinds of errors.
 
 .. note:: If you do experience error and everything seems not working, please refresh the browser and start over. If the issue is still there, please email us.
 
@@ -88,7 +88,7 @@ Please see https://github.com/pinellolab/PrimeDesign#primedesign-input-sequence-
 
 We use PrimeDesign format as a FASTA format, the fasta header is used as the variant name.
 
-Please note that the ``Combinatorial edits`` format is not accepted, e.g., ``GC(G/T)CCA(+ATCG)AAA``
+Please note that the ``Combinatorial edits`` format is not supported, e.g., ``GC(G/T)CCA(+ATCG)AAA``
 
 Searching Parameters
 ^^^^^^
@@ -116,4 +116,4 @@ Output pegRNA/ngRNA genome browser visualization
 
 Genome browser view is powered by Protein Paint (https://pecan.stjude.cloud/proteinpaint). You can zoom in to actually see the DNA bases.
 
-Howevery, we only support hg19 in the tracks. So then the second visualization, will be better if your input is in FASTA format (e.g., if you have hg38 variant, you can first extract +/- 100bp sequence and input here).
+However, we only support hg19 in the tracks. So then the second visualization, will be better if your input is in FASTA format (e.g., if you have hg38 variant, you can first extract +/- 100bp sequence and input here).
