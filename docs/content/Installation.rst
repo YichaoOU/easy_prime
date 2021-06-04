@@ -7,7 +7,10 @@ Easy-Prime Installation steps
 Summary
 ^^^^^^
 
-Installation of easy-prime is really easy, however, you might experience errors due to lower conda version problem. Please make sure that you have conda installed and conda version >= 4.9.
+Installation of Easy-Prime is really easy via conda, however, you might experience errors due to lower conda version problem. Please make sure that you have conda installed and conda version >= 4.9.
+
+.. note:: Easy-Prime is only available on Linux or Mac. For installation via conda, make sure conda version >= 4.9. 
+
 
 
 Steps
@@ -70,7 +73,39 @@ Stage 5. Print Easy_prime help message
 
 Type, ``easy_prime -h``
 
+FAQ
+^^^^
 
+Can Easy-Prime be installed in Windows?
+---------------
+
+No. It is currently impossible because the ViennaRNA package is not available in Windows. We might develop a Docker version for Easy-Prime in the future so that users in any OS can use Easy-Prime. 
+
+Can Easy-Prime be installed via lower conda version?
+------------
+
+Yes. It is possible but can be time-consuming. You can install the following dependencies via conda (some may still need higher conda version)and then install Easy-Prime via ``pip install easy-prime``.
+
+::
+
+    - python
+    - bedtools
+    - matplotlib
+    - pandas
+    - xgboost
+    - scikit-learn
+    - viennarna
+    - joblib
+    - pyyaml
+    - scikit-bio
+    - biopython
+    - mechanize
+    - dna_features_viewer
+    - dash
+    - dash-bio
+    - dash-core-components
+    - jupyter_dashboards
+    - plotly
 
 
 

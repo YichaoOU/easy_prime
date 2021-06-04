@@ -14,7 +14,7 @@ Easy-Prime applies a machine learning model (i.e., XGboost) that learned importa
 
 # Installation
 
-The most easiest way to install Easy-Prime is via conda.
+The most easiest way to install Easy-Prime is via conda (version >=4.9). 
 
 ```
 
@@ -66,9 +66,8 @@ python main.py
 
 # Easy-Prime on AWS
 
-Please use this URL for now: http://easy-prime-test-dev.us-west-2.elasticbeanstalk.com/
+Please use this URL: http://easy-prime.cc/
 
-We will deploy it to St. Jude once we get approved from the IT department.
 
 # Tutorial
 
