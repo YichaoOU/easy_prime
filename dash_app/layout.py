@@ -72,12 +72,7 @@ def display_table(df,table_name):
 					row_selectable = 'single',
 					# filter_action = 'native',
 					style_data_conditional=[{
-						'if': {'column_id': 'annotation', 'filter_query': '{annotation} eq PAM-disruption'},
-						'backgroundColor': "#62c096",
-						'color': 'white'
-					},
-					{
-						'if': {'column_id': 'annotation', 'filter_query': '{annotation} eq PE3b'},
+						'if': {'column_id': 'annotation', 'filter_query': '{annotation} != ""'},
 						'backgroundColor': "#62c096",
 						'color': 'white'
 					},

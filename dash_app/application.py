@@ -153,7 +153,10 @@ def update_sgRNA_table(sample_ID,rawX,X_p):
 	# print ("updating sgRNA table")
 	if "PAM-disruption" in sgRNA_df.annotation.tolist():
 		# print ("Yes, dPAM!")
-		selected_sgRNA = sgRNA_df[sgRNA_df.annotation=="PAM-disruption"].index.tolist()[:1]
+		tmp = sgRNA_df[sgRNA_df.annotation=="PAM-disruption"]
+		if "PE3b" in tmp.sample_ID.tolist():
+			tmp = tmp[tmp.sample_ID.str.contains("PE3b")]
+		selected_sgRNA = tmp.index.tolist()[:1]
 		# print (selected_sgRNA)
 	sgRNA_df_stored = sgRNA_df.copy()
 	
@@ -282,18 +285,17 @@ def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_ta
 	vis_df_copy = vis_df.copy()
 	vis_df_copy['predicted_efficiency'] = vis_df_copy['predicted_efficiency']/100
 	vis_df_copy.to_csv(filename,index=False)
-	img_src = vis_pegRNA_png(filename,jid)
+	# img_src = vis_pegRNA_png(filename,jid)
+	img_src = ""
 	# vis_tab.append(add_vis_tab(vis_name,"img",src,tab_id))
 	# print (vis_tab.label)
 	# print (vis_tab[0].label)
-	if active_tab in ['vcf_tab','vcf_batch_tab']:
-		vis_bed = "%s_%s"%(jid,len(vis_tab))
-		# print (vis_bed)
-		track_src = df2bedjs(vis_df,vis_bed)
-		# print ("showing both iframe and image")
-		vis_tab.append(add_vis_tab(vis_name,"iframe",img_src,tab_id,track_src = track_src,view_location=view_location))
-	else:
-		vis_tab.append(add_vis_tab(vis_name,"",img_src,tab_id))
+	# if active_tab in ['vcf_tab','vcf_batch_tab']:
+		# vis_bed = "%s_%s"%(jid,len(vis_tab))
+		# track_src = df2bedjs(vis_df,vis_bed)
+		# vis_tab.append(add_vis_tab(vis_name,"iframe",img_src,tab_id,track_src = track_src,view_location=view_location))
+	# else:
+		# vis_tab.append(add_vis_tab(vis_name,"",img_src,tab_id))
 	return vis_tab,tab_id,get_current_pegRNA_table_title_and_download_links(vis_df,jid),None
 #----------------------- main callbacks ---------------------------
 
