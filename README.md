@@ -4,13 +4,13 @@
 
 # Easy-Prime: an optimized prime editor gRNA design tool based on gradient boosting trees
 
-Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient Prime editing design.
+Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient PE design.
 
 # Summary
 
 PE design involves carefully choosing a standard sgRNA, a RT template that contains the desired edits, a PBS that primes the RT reaction, and a ngRNA that nicks the non-edit strand. Usually thousands of combinations are available for one single disired edit. Therefore, it is overwhelming to select the most likely high-efficient candidate from the huge number of combinations.
 
-Easy-Prime applies a machine learning model (i.e., XGboost) that learned important PE design features from public PE amplicon sequencing data to help researchers selecting the best candidate.
+Easy-Prime applies a machine learning model (i.e., XGboost) that learns important PE design features from multiple published PE data sources to help researchers selecting the best candidate.
 
 # Installation
 
@@ -28,9 +28,13 @@ easy_prime_vis -h
 
 ```
 
+See https://easy-prime.readthedocs.io/en/latest/content/Installation.html for step-by-step installation screenshots.
+
 # Usage
 
 ```
+
+## Make sure you have installed Easy-Prime before running the commands below
 
 git clone https://github.com/YichaoOU/easy_prime
 
@@ -40,7 +44,7 @@ easy_prime -h
 
 easy_prime --version
 
-## Please update the genome_fasta in config.yaml 
+## Please update the genome_fasta in config.yaml, otherwise an error may occur!
 
 easy_prime -c config.yaml -f test.vcf
 
@@ -58,7 +62,7 @@ git clone https://github.com/YichaoOU/easy_prime
 
 cd easy_prime/dash_app
 
-python main.py
+python application.py
 
 ```
 
@@ -92,12 +96,13 @@ chr19	10244324	EDFIG5B_DNMT1_dPAM	G	T
 To specify reference and alternative allele, you need two fasta sequences; `_ref` is a keyword that will be recognized as the reference allele and `_alt` is a keyword for target mutations.
 
 ```
->test_ref
-AAAAAAAAAAAAAAAAAAAAAAAAAGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
->test_alt
-AAAAAAAAAAAAAAAAAAAAAAAAAGGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-
+>rs2251964_ref
+GTTACCAAAGCAAATGACATCTTGTGAAAGGGGAGGTCTGAAAAAAAAAAACAAGTGGGTGGGTTTTTTCAAAGTAGGCCACCGGGCCTGAGATGACCAGAATTCAAATTAGGATGACAGTGTAGTAGGGGAAGCAACCAGAATCGGACCT
+>rs2251964_alt
+GTTACCAAAGCAAATGACATCTTGTGAAAGGGGAGGTCTGAAAAAAAAAAACAAGTGGGTGGGTTTTTTCAAAGTAGGCCACCGGGCCTGAGATAACCAGAATTCAAATTAGGATGACAGTGTAGTAGGGGAAGCAACCAGAATCGGACCT
 ```
+
+The PrimeDesign format input is only supported in the Easy-Prime web server.
 
 ## Parameters
 
@@ -107,14 +112,15 @@ Genome: only support hg19 for now.
 
 The web output contain two parts:
 
-1. Sequence visualization
 
-By default, the top prediction will be shown automatically. Users can input the sample ID (in the table below) to plot specific prediction.
+1. pegRNA table
 
-2. pegRNA table
+In this result table, each predicted sgRNA/ngRNA/RTT/PBS configuration will be provided in 4 rows, they will have the same variant ID and predicted efficiency.
 
-In this result table, each predicted sgRNA/ngRNA/RTT/PBS configuration will be provided in 4 rows, they will have the same sample ID and predicted efficiency.
 
+2. Sequence visualization
+
+By default, the top prediction will be shown automatically. 
 
 
 # Input
