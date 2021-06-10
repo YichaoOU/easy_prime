@@ -72,12 +72,7 @@ def display_table(df,table_name):
 					row_selectable = 'single',
 					# filter_action = 'native',
 					style_data_conditional=[{
-						'if': {'column_id': 'annotation', 'filter_query': '{annotation} eq PAM-disruption'},
-						'backgroundColor': "#62c096",
-						'color': 'white'
-					},
-					{
-						'if': {'column_id': 'annotation', 'filter_query': '{annotation} eq PE3b'},
+						'if': {'column_id': 'annotation', 'filter_query': '{annotation} != ""'},
 						'backgroundColor': "#62c096",
 						'color': 'white'
 					},
@@ -105,7 +100,7 @@ init_sgRNA_table = pd.DataFrame([],columns=['chr','start','end','seq','DeepSpCas
 sgRNA_table = display_table(init_sgRNA_table,'sgRNA')
 
 
-init_ngRNA_table = pd.DataFrame([],columns=['chr','start','end','seq','nick_pos','strand'])
+init_ngRNA_table = pd.DataFrame([],columns=['chr','start','end','seq','nick_pos','strand','annotation'])
 ngRNA_table = display_table(init_ngRNA_table,'ngRNA')
 init_RTT_table = pd.DataFrame([],columns=['chr','start','end','seq','RTT_length','strand'])
 RTT_table = display_table(init_RTT_table,'RTT')
@@ -394,7 +389,7 @@ def ngRNA_slider():
 	# subtitle = 'Please select the maximum ngRNA distance to pegRNA'
 	subtitle = 'nick-gRNA distance'
 	# title = 'ngRNA to pegRNA distance range'
-	return mySlider("ngRNA",0,200,labelDict,defaultValue=90,subtitle=subtitle)
+	return mySlider("ngRNA",0,200,labelDict,defaultValue=100,subtitle=subtitle)
 
 RTT_input = dbc.Card(
 	dbc.CardBody(
@@ -574,6 +569,12 @@ runproteinpaint({
 		type:"bigwig",
 	  "url":"http://hgdownload.soe.ucsc.edu/goldenPath/hg19/phyloP100way/hg19.100way.phyloP100way.bw",
 			"name":"UCSC phyloP 100ways",
+			"height":100
+		},
+		{
+		type:"bigwig",
+	  "url":"http://easy-prime.cc/results/SRR8056671_293T.rmdup.uq.bw",
+			"name":"293T ATAC-seq (SRR8056671)",
 			"height":100
 		},
 		{track_src}

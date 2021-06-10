@@ -19,6 +19,7 @@ import RNA
 from copy import deepcopy as dp
 import numpy as np
 import sys
+import math
 #------------------ FILE IO ---------------------------
 
 def write_file(file_name,message):
@@ -128,6 +129,14 @@ def run_pam_finder(target_fa,seq,PAM,abs_start_pos,chr):
 			out.append([chr,(len(target_fa)-s)+abs_start_pos-len(seq),(len(target_fa)-s)+abs_start_pos,rev_seq[s:(s+len(seq))],rev_seq[s:(s+len(seq)+len(PAM))],"-"])
 	return pd.DataFrame(out)
 
+def force_recommend_dPAM_PE3b(r,max_eff):
+	rank = 0
+	if "dPAM" in r.index:
+		rank += 1
+	if "PE3b" in r.index:
+		if not max_eff-r.predicted_efficiency>max_eff*0.1:
+			rank += 1
+	return rank
 
 #------------------ Fasta Operators ---------------------------
 from Bio import SeqIO

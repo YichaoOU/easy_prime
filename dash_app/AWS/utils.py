@@ -283,13 +283,24 @@ def get_options_dict(jid):
 			out.append({'label': i, 'value': i})
 	return out,first_valid
 
-def get_annotation(x):
+def get_annotation_dPAM(x):
 	if "dPAM" in x:
 		return "PAM-disruption"
+	return ""
+
+def get_annotation_PE3b(x):
+
 	if "PE3b" in x:
 		return "PE3b"
 	return ""
-	
+def force_recommend_dPAM_PE3b(r,max_eff):
+	rank = 0
+	if "PE3b" in r.sample_ID:
+		if not max_eff-r.predicted_efficiency>max_eff*0.1:
+			rank += 1
+	if "dPAM" in r.sample_ID:
+		rank += 1
+	return rank
 def to_sgRNA_table(rawX,sample_ID):
 	rawX_df = rawX[rawX.sample_ID.str.contains(sample_ID)]
 	rawX_df = rawX_df[rawX_df['type']=='sgRNA']
@@ -297,8 +308,10 @@ def to_sgRNA_table(rawX,sample_ID):
 	rawX_df = rawX_df.sort_values('predicted_efficiency',ascending=False)
 	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
 	columns = ['chr','start','end','seq','DeepSpCas9_score','strand','target_pos','annotation']
-	
-	rawX_df['annotation'] = rawX_df.sample_ID.apply(get_annotation)
+	rawX_df['rank'] = rawX_df.apply(lambda r:force_recommend_dPAM_PE3b(r,rawX_df.predicted_efficiency.max()),axis=1)
+	rawX_df = rawX_df.sort_values(['rank','predicted_efficiency'],ascending=False)
+	rawX_df['annotation'] = rawX_df.sample_ID.apply(get_annotation_dPAM)
+
 	rawX_df = rawX_df.reset_index(drop=True)
 	return rawX_df[columns]
 
@@ -308,10 +321,15 @@ def to_ngRNA_table(rawX,sgRNA_location):
 	rawX_df = rawX[rawX.sample_ID.isin(sample_ID_list)]
 	rawX_df = rawX_df[rawX_df['type']=='ngRNA']
 	rawX_df = rawX_df.drop_duplicates(['chr','start','end'])
-	columns = ['chr','start','end','seq','nick_pos','strand']
-	rawX_df = rawX_df.sort_values('nick_pos')
+	columns = ['chr','start','end','seq','nick_pos','strand','annotation']
+	rawX_df['annotation'] = rawX_df.sample_ID.apply(get_annotation_PE3b)
+	rawX_df['rank'] = rawX_df.apply(lambda r:force_recommend_dPAM_PE3b(r,rawX_df.predicted_efficiency.max()),axis=1)
+	rawX_df['nick_pos_abs'] = rawX_df['nick_pos'].abs()
+	rawX_df = rawX_df.sort_values('nick_pos_abs')
+	rawX_df = rawX_df.drop(['nick_pos_abs'],axis=1)
 	rawX_df = rawX_df.reset_index(drop=True)
-	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
+
+	return rawX_df[columns],rawX_df.sort_values(['rank','predicted_efficiency'],ascending=False).index[0]
 
 
 def to_PBS_table(rawX,sgRNA_location):
@@ -320,10 +338,13 @@ def to_PBS_table(rawX,sgRNA_location):
 	rawX_df = rawX_df[rawX_df['type']=='PBS']
 	columns = ['chr','start','end','seq','PBS_length','strand']
 	rawX_df = rawX_df.drop_duplicates('seq')
-	# rawX_df['PBS_length'] = rawX_df.seq.apply(len)
+	
+	rawX_df['rank'] = rawX_df.apply(lambda r:force_recommend_dPAM_PE3b(r,rawX_df.predicted_efficiency.max()),axis=1)
 	rawX_df = rawX_df.sort_values('PBS_length')
 	rawX_df = rawX_df.reset_index(drop=True)
-	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
+
+	return rawX_df[columns],rawX_df.sort_values(['rank','predicted_efficiency'],ascending=False).index[0]
+
 
 def to_RTT_table(rawX,sgRNA_location):
 	sample_ID_list = rawX[(rawX.location_name==sgRNA_location)&(rawX['type']=='sgRNA')].sample_ID.tolist()
@@ -332,9 +353,12 @@ def to_RTT_table(rawX,sgRNA_location):
 	columns = ['chr','start','end','seq','RTT_length','strand']
 	rawX_df = rawX_df.drop_duplicates('seq')
 	# rawX_df['RTT_length'] = rawX_df.seq.apply(len)
+	rawX_df['rank'] = rawX_df.apply(lambda r:force_recommend_dPAM_PE3b(r,rawX_df.predicted_efficiency.max()),axis=1)
 	rawX_df = rawX_df.sort_values('RTT_length')
 	rawX_df = rawX_df.reset_index(drop=True)
-	return rawX_df[columns],rawX_df.predicted_efficiency.idxmax()
+
+	return rawX_df[columns],rawX_df.sort_values(['rank','predicted_efficiency'],ascending=False).index[0]
+
 
 
 def get_uid():

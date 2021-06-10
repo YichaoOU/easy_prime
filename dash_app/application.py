@@ -1,7 +1,7 @@
 import utils2
 import layout
 
-# exec(open("new_dash_app.py").read())
+# exec(open("application.py").read())
 import imp  
 imp.reload(utils2)
 imp.reload(layout)
@@ -138,26 +138,16 @@ def load_examples(value):
 	# add parameter states
 	]
 )
+
 def update_sgRNA_table(sample_ID,rawX,X_p):
 	if not sample_ID:
 		# return init_sgRNA_table.to_dict('records'),None,None
 		return None
 	# print ("inside update_sgRNA_table")
 	rawX = pd.read_json(rawX, orient='split')
-	# print (rawX.head())
 	X_p = pd.read_json(X_p, orient='split')
-	# print (X_p.head())
-	# sgRNA_df,ID_list = to_sgRNA_table(rawX,X_p,sample_ID)
 	sgRNA_df = to_sgRNA_table(rawX,sample_ID)
 	selected_sgRNA = [0]
-	# print ("updating sgRNA table")
-	if "PAM-disruption" in sgRNA_df.annotation.tolist():
-		# print ("Yes, dPAM!")
-		tmp = sgRNA_df[sgRNA_df.annotation=="PAM-disruption"]
-		if "PE3b" in tmp.sample_ID.tolist():
-			tmp = tmp[tmp.sample_ID.str.contains("PE3b")]
-		selected_sgRNA = tmp.index.tolist()[:1]
-		# print (selected_sgRNA)
 	sgRNA_df_stored = sgRNA_df.copy()
 	
 	sgRNA_df_stored['name'] = sgRNA_df_stored.chr+"_"+sgRNA_df_stored.start.astype(str)+"_"+sgRNA_df_stored.end.astype(str)+"_"+sgRNA_df_stored.seq
@@ -274,9 +264,9 @@ def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_ta
 	
 	vis_df['vis_name'] = vis_df.target_pos.astype(str)+"_"+vis_df.PBS_length.astype(str)+"_"+vis_df.RTT_length.astype(str)+"_"+vis_df.nick_pos.astype(str)
 	try:
-		view_location = "%s:%s-%s"%(vis_df.CHROM[0],vis_df.POS[0],vis_df.POS[0]+len(vis_df.REF[0]))
+		view_location = "%s:%s-%s"%(vis_df.CHROM[0],vis_df.POS[0],vis_df.POS[0]+len(vis_df.REF[0])-1)
 	except:
-		view_location = "%s:%s-%s"%(vis_df.CHROM[0],vis_df.POS[0],vis_df.POS[0]+1)
+		view_location = "%s:%s-%s"%(vis_df.CHROM[0],vis_df.POS[0],vis_df.POS[0])
 	vis_name = variant_id+"_"+vis_df.vis_name[0]
 	tab_id = "tab-%s"%(len(vis_tab))
 	
@@ -285,17 +275,17 @@ def update_track_view(sgRNA_table_index,PBS_table_index,RTT_table_index,ngRNA_ta
 	vis_df_copy = vis_df.copy()
 	vis_df_copy['predicted_efficiency'] = vis_df_copy['predicted_efficiency']/100
 	vis_df_copy.to_csv(filename,index=False)
-	# img_src = vis_pegRNA_png(filename,jid)
-	img_src = ""
+	img_src = vis_pegRNA_png(filename,jid)
+	# img_src = ""
 	# vis_tab.append(add_vis_tab(vis_name,"img",src,tab_id))
 	# print (vis_tab.label)
 	# print (vis_tab[0].label)
-	# if active_tab in ['vcf_tab','vcf_batch_tab']:
-		# vis_bed = "%s_%s"%(jid,len(vis_tab))
-		# track_src = df2bedjs(vis_df,vis_bed)
-		# vis_tab.append(add_vis_tab(vis_name,"iframe",img_src,tab_id,track_src = track_src,view_location=view_location))
-	# else:
-		# vis_tab.append(add_vis_tab(vis_name,"",img_src,tab_id))
+	if active_tab in ['vcf_tab','vcf_batch_tab']:
+		vis_bed = "%s_%s"%(jid,len(vis_tab))
+		track_src = df2bedjs(vis_df,vis_bed)
+		vis_tab.append(add_vis_tab(vis_name,"iframe",img_src,tab_id,track_src = track_src,view_location=view_location))
+	else:
+		vis_tab.append(add_vis_tab(vis_name,"",img_src,tab_id))
 	return vis_tab,tab_id,get_current_pegRNA_table_title_and_download_links(vis_df,jid),None
 #----------------------- main callbacks ---------------------------
 

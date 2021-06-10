@@ -100,7 +100,7 @@ init_sgRNA_table = pd.DataFrame([],columns=['chr','start','end','seq','DeepSpCas
 sgRNA_table = display_table(init_sgRNA_table,'sgRNA')
 
 
-init_ngRNA_table = pd.DataFrame([],columns=['chr','start','end','seq','nick_pos','strand'])
+init_ngRNA_table = pd.DataFrame([],columns=['chr','start','end','seq','nick_pos','strand','annotation'])
 ngRNA_table = display_table(init_ngRNA_table,'ngRNA')
 init_RTT_table = pd.DataFrame([],columns=['chr','start','end','seq','RTT_length','strand'])
 RTT_table = display_table(init_RTT_table,'RTT')

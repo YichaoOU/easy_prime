@@ -339,7 +339,11 @@ class target_mutation:
 		self.X_p = self.X_p.sort_values("predicted_efficiency",ascending=False)
 		self.rawX = self.rawX.sort_values("predicted_efficiency",ascending=False)
 		tmp = self.rawX.copy()
-		tmp['rank'] = tmp.index.str.contains("PE3b").astype(int)+tmp.index.str.contains("dPAM").astype(int)
+		# recommend dPAM when ever possible
+		if self.found_dPAM:
+			tmp = tmp[tmp.index.str.contains('dPAM')]
+		# recommend PE3b except when its predicted efficiency is 10% smaller than the highest ones
+		tmp['rank'] = tmp.apply(lambda r:force_recommend_dPAM_PE3b(r,tmp.predicted_efficiency.max()),axis=1)
 		tmp = tmp.sort_values(['rank','predicted_efficiency'],ascending=False)
 		tmp = tmp.drop(['rank'],axis=1)
 		self.topX = tmp.loc[tmp.index[0]]
