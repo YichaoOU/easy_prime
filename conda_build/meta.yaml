@@ -1,13 +1,13 @@
 {% set name = "easy_prime" %}
-{% set version = "1.1.8" %}
+{% set version = "1.2" %}
 
 package:
   name: "{{ name|lower }}"
   version: "{{ version }}"
 
 source:
-  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: 930fcb8a7007c49d7174d1060063f851c320542bd0560c166c15e8b3f2f0d6d3
+  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/easy_prime-1.2-2.tar.gz"
+  sha256: f15c3076c5c9956eb1e4b379002a87f98bde85d2d20d110179d47115af31b244
 
 build:
   number: 0
@@ -34,8 +34,11 @@ requirements:
     - dash
     - dash-bio
     - dash-core-components
+    - dash-core-components
     - jupyter_dashboards
     - plotly
+    - htslib
+    - dash-bootstrap-components
 
 test:
   imports:

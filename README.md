@@ -2,7 +2,7 @@
 [![Python versions][python-shield]][python-url]
 [![Platforms][platform-shield]][python-url]
 
-# Easy-Prime server is down due to some AWS issues. should be fixed by 6/10
+
 
 # Easy-Prime: an optimized prime editor gRNA design tool based on gradient boosting trees
 

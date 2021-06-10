@@ -13,6 +13,8 @@ This web server is based on Dash. URL is: http://easy-prime.cc/
 
 .. note:: Currently, this web portal only supports hg19. 
 
+.. note:: We had it before that the Easy-Prime server is done due to some AWS issue. If so, just let us know, we will fix it. 
+
 
 Get Started
 ^^^^^
