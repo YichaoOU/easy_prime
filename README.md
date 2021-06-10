@@ -89,6 +89,8 @@ Please use this URL: http://easy-prime.cc/
 
 # Tutorial
 
+See https://easy-prime.readthedocs.io/en/latest/content/AWS.html for step-by-step tutorial with screenshots.
+
 ## Input
 
 1. vcf input example
