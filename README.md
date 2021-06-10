@@ -52,6 +52,12 @@ easy_prime -c config.yaml -f test.vcf
 
 ## Will output results to a folder
 
+## to output visualization, go to this output folder and run:
+
+## Please make sure you have provided the correct path to genome fasta using -s
+
+easy_prime_vis -f topX_pegRNAs.csv -s ~/Data/Human/hg19/fasta/hg19.fa
+
 ```
 
 Easy-Prime also provides a dash application. 
@@ -60,9 +66,15 @@ Please have dash installed before running the dash application.
 
 ```
 
+## Make sure you have installed Easy-Prime before running the commands below
+
 git clone https://github.com/YichaoOU/easy_prime
 
 cd easy_prime/dash_app
+
+## Please update the genome_fasta in config.yaml, otherwise an error may occur!
+
+## Please also update the genome_fasta variable in line 56 in utils2.py
 
 python application.py
 
@@ -104,7 +116,7 @@ GTTACCAAAGCAAATGACATCTTGTGAAAGGGGAGGTCTGAAAAAAAAAAACAAGTGGGTGGGTTTTTTCAAAGTAGGCC
 GTTACCAAAGCAAATGACATCTTGTGAAAGGGGAGGTCTGAAAAAAAAAAACAAGTGGGTGGGTTTTTTCAAAGTAGGCCACCGGGCCTGAGATAACCAGAATTCAAATTAGGATGACAGTGTAGTAGGGGAAGCAACCAGAATCGGACCT
 ```
 
-The PrimeDesign format input is only supported in the Easy-Prime web server.
+The PrimeDesign format input is only supported in the Easy-Prime web server. The vcf file separated by space is only supported in the Easy-Prime web server.
 
 ## Parameters
 
@@ -189,6 +201,24 @@ easy_prime_vis -f topX_pegRNAs.csv -s /path/to/genome_fasta.fa
 ```
 
 This will output pdf files to a result dir. 
+
+
+## FAQ
+
+#### Can't read input file
+
+```
+Error: The requested fasta database file (/Users/yli11/Data/hg19.fa) could not be opened. Exiting!
+Reading fasta file: test.vcf
+{}
+no valid sequences in: test.vcf
+Exit...
+Can't read test.vcf as vcf or fasta. Please check input. Exit...
+
+```
+
+This error, as it outputs, is caused by the `genome_fasta` parameter in the `config.yaml` file. Make sure you have the correct path to the input genome fasta.
+
 
 [version-shield]: https://img.shields.io/conda/v/cheng_lab/easy_prime.svg
 [version-url]: https://anaconda.org/cheng_lab/easy_prime
