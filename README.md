@@ -3,7 +3,7 @@
 [![Platforms][platform-shield]][python-url]
 [![DOI](https://zenodo.org/badge/265117246.svg)](https://zenodo.org/badge/latestdoi/265117246)
 
-
+# Easy-Prime server is down. We are fixing it.
 
 # Easy-Prime: an optimized prime editor gRNA design tool based on gradient boosting trees
 
