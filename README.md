@@ -3,8 +3,6 @@
 [![Platforms][platform-shield]][python-url]
 [![DOI](https://zenodo.org/badge/265117246.svg)](https://zenodo.org/badge/latestdoi/265117246)
 
-# Easy-Prime server is down. We are fixing it.
-
 # Easy-Prime: an optimized prime editor gRNA design tool based on gradient boosting trees
 
 Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient PE design.
@@ -14,6 +12,19 @@ Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient PE des
 PE design involves carefully choosing a standard sgRNA, a RT template that contains the desired edits, a PBS that primes the RT reaction, and a ngRNA that nicks the non-edit strand. Usually thousands of combinations are available for one single disired edit. Therefore, it is overwhelming to select the most likely high-efficient candidate from the huge number of combinations.
 
 Easy-Prime applies a machine learning model (i.e., XGboost) that learns important PE design features from multiple published PE data sources to help researchers selecting the best candidate.
+
+# Docker usage
+
+The simplest way to use easy-prime is to use our dockerized version.
+
+```
+docker pull liyc1989/easy_prime
+
+docker run -p 80:80 easy_prime
+
+```
+
+ref: https://github.com/YichaoOU/easy_prime_docker
 
 # Installation
 
