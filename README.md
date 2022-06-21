@@ -5,7 +5,7 @@
 
 # Easy-Prime: an optimized prime editor gRNA design tool based on gradient boosting trees
 
-Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient PE design. Visit: http://easy-prime.cc/ or http://34.224.85.234/
+Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient PE design. Visit: http://easy-prime.cc/ or http://18.209.21.81/
 
 # Summary
 
