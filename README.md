@@ -98,7 +98,7 @@ python application.py
 
 Please use this URL: http://easy-prime.cc/
 
-New to the AWS version, we added linker sequence from `pegLIT` prediction. See the example below.
+New to the AWS version, we added linker sequence from `pegLIT` prediction. It may take several minutes to get the linker sequence. See the example below.
 
 ![linker](easy_prime_AWS_updates.PNG)
 
