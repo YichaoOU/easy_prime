@@ -98,6 +98,10 @@ python application.py
 
 Please use this URL: http://easy-prime.cc/
 
+New to the AWS version, we added linker sequence from `pegLIT` prediction. See the example below.
+
+![linker](easy_prime_AWS_updates.PNG)
+
 # Tutorial
 
 See https://easy-prime.readthedocs.io/en/latest/content/AWS.html for step-by-step tutorial with screenshots.
