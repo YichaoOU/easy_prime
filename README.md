@@ -7,6 +7,10 @@
 
 Easy-Prime provides optimized pegRNA and ngRNA combinations for efficient PE design. Visit: http://easy-prime.cc/
 
+# New URL
+
+http://easy-prime.biz/
+
 # Summary
 
 PE design involves carefully choosing a standard sgRNA, a RT template that contains the desired edits, a PBS that primes the RT reaction, and a ngRNA that nicks the non-edit strand. Usually thousands of combinations are available for one single disired edit. Therefore, it is overwhelming to select the most likely high-efficient candidate from the huge number of combinations.
